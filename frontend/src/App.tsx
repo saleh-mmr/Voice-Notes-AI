@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Copy,
 } from "lucide-react";
+import { useState } from "react";
 import "./App.css";
 
 function Divider() {
@@ -19,7 +20,34 @@ function Divider() {
   );
 }
 
+
 function App() {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleAudioFile = (file) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("audio/")) {
+      alert("Please select an audio file.");
+      return;
+    }
+
+    console.log("Selected audio:", file);
+
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+
+    handleAudioFile(file);
+  };
+
+
   return (
     <main className="app">
       <div className="container">
@@ -41,17 +69,65 @@ function App() {
 
         <Divider />
 
-        <section className="upload-box">
-          <Upload className="upload-icon" size={64} />
+      <section
+        className={`upload-box ${isDragging ? "dragging" : ""}`}
+        onClick={() => document.getElementById("audio-upload")?.click()}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(false);
+        }}
+        onDrop={handleDrop}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            document.getElementById("audio-upload")?.click();
+          }
+        }}
+      >
+        <input
+          type="file"
+          id="audio-upload"
+          accept="audio/*"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
 
-          <h2>Upload Audio File</h2>
+            handleAudioFile(file);
 
-          <p>Drag and drop or click to browse</p>
+            // Allows selecting the same file again later
+            e.target.value = "";
+          }}
+        />
 
-          <div className="formats">
-            MP3, WAV, M4A, WebM, OGG
-          </div>
-        </section>
+        <Upload className="upload-icon" size={64} />
+
+        <h2>
+          {isDragging ? "Drop Audio File Here" : "Upload Audio File"}
+        </h2>
+
+        <p>
+          {isDragging
+            ? "Release to upload"
+            : "Drag and drop or click to browse"}
+        </p>
+
+        <div className="formats">
+          MP3, WAV, M4A, WebM, OGG
+        </div>
+      </section>
 
         <Divider />
 

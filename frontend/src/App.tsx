@@ -7,7 +7,7 @@ import {
   ChevronUp,
   Copy,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import "./App.css";
 
 function Divider() {
@@ -23,28 +23,37 @@ function Divider() {
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
-  const handleAudioFile = (file) => {
+  useEffect(() => {
+    if (!audioFile) {
+      setAudioUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(audioFile);
+    setAudioUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };  
+  }, [audioFile]);
+
+
+  const handleAudioFile = (file: File | undefined) => {
     if (!file) return;
-
     if (!file.type.startsWith("audio/")) {
       alert("Please select an audio file.");
       return;
     }
-
-    console.log("Selected audio:", file);
-
+    setAudioFile(file);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files?.[0];
-
-    handleAudioFile(file);
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault();   // Don't let the browser open the dropped file
+    e.stopPropagation();  // Don't send this event to parent elements
+    setIsDragging(false); // The user has finished dragging
+    const file = e.dataTransfer.files?.[0]; // Get the first file from the dropped files
+    handleAudioFile(file); // Validate and process the dropped file
   };
 
 
@@ -70,8 +79,9 @@ function App() {
         <Divider />
 
       <section
-        className={`upload-box ${isDragging ? "dragging" : ""}`}
-        onClick={() => document.getElementById("audio-upload")?.click()}
+        className={`upload-box ${isDragging ? "dragging" : ""}`}          // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
+        onClick={() => document.getElementById("audio-upload")?.click()}  // click on the whole box to trigger input file selection, it tries to find the input element by its ID and programmatically clicks it, opening the file selection dialog.
+        
         onDragEnter={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -87,7 +97,7 @@ function App() {
           e.stopPropagation();
           setIsDragging(false);
         }}
-        onDrop={handleDrop}
+        onDrop={handleDrop}   // When a file is dropped, handleDrop will be called to process the file
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -102,31 +112,51 @@ function App() {
           id="audio-upload"
           accept="audio/*"
           hidden
+
           onChange={(e) => {
-            const file = e.target.files?.[0];
-
+            const file = e.target.files?.[0]; // e.target refers to the input element, and files is a FileList containing the selected files. The code retrieves the first file from this list.
             handleAudioFile(file);
-
-            // Allows selecting the same file again later
-            e.target.value = "";
+            e.target.value = "";            // Allows selecting the same file again later
           }}
         />
 
         <Upload className="upload-icon" size={64} />
+        {audioFile ? (
+          //  If an audio file has been uploaded, display its name, size, and type
+          <>
+            <h2>{audioFile.name}</h2>
 
-        <h2>
-          {isDragging ? "Drop Audio File Here" : "Upload Audio File"}
-        </h2>
+            <p>
+              {(audioFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
 
-        <p>
-          {isDragging
-            ? "Release to upload"
-            : "Drag and drop or click to browse"}
-        </p>
+            <div className="formats">
+              {audioFile.type || "Audio file"}
+            </div>
 
-        <div className="formats">
-          MP3, WAV, M4A, WebM, OGG
-        </div>
+            {audioUrl && (<audio controls src={audioUrl} className="audio-preview"/>)}
+          </>
+        ) : (
+          // If no audio file has been uploaded, display instructions for uploading
+          <>.     
+            <h2>
+              {isDragging ? "Drop Audio File Here" : "Upload Audio File"}
+            </h2>
+
+            <p>
+              {isDragging
+                ? "Release to upload"
+                : "Drag and drop or click to browse"}
+            </p>
+
+            <div className="formats">
+              MP3, WAV, M4A, WebM, OGG
+            </div>
+          </>
+        )}
+
+
+        
       </section>
 
         <Divider />

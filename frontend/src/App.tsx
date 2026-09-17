@@ -36,6 +36,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [cleanedTranscript, setCleanedTranscript] = useState("");
+  const [inputSource, setInputSource] = useState<"record" | "upload" | "text" | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const vHoldTimerRef = useRef<number | null>(null);
@@ -60,11 +61,18 @@ function App() {
       return;
     }
     setAudioFile(file);
+    setInputSource("upload");
+    setTranscriptText("");
   };
   
   const removeAudioFile = () => {
     setAudioFile(null);
-    const input = document.getElementById("audio-upload") as HTMLInputElement | null; // we have e.target.value = ""; in the onChange handler, so these lines are optional
+    setInputSource(null);
+
+    const input = document.getElementById(
+      "audio-upload"
+    ) as HTMLInputElement | null;
+
     if (input) {
       input.value = "";
     }
@@ -83,25 +91,41 @@ function App() {
       const stream = await navigator.mediaDevices.getUserMedia({ // stream becomes a MediaStream containing audio coming from the microphone.
         audio: true,
       });
+
       const mediaRecorder = new MediaRecorder(stream); // MediaRecorder is a built-in browser API that allows recording audio streams. It takes a MediaStream as input and provides methods to start and stop recording, as well as events to handle the recorded data.
       audioChunksRef.current = []; // clear old audio chunks before starting a new recording
+      
       mediaRecorder.ondataavailable = (event) => { // This event is fired when the MediaRecorder has audio data available. The event contains a Blob of audio data.
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data); // Store the audio data in the audioChunksRef array for later processing.
         }
       };
-      mediaRecorder.onstop = () => { // This event is fired when the recording is stopped. We can now process the recorded audio data.
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType, }); // Combine all the recorded audio chunks into a single Blob.
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: mediaRecorder.mimeType,
+        });
+
         const extension = mediaRecorder.mimeType.includes("mp4")
           ? "m4a"
           : mediaRecorder.mimeType.includes("ogg")
             ? "ogg"
             : "webm";
 
-        const audioFile = new File([audioBlob], `recording-${Date.now()}.${extension}`, {type: mediaRecorder.mimeType}); // Create a File object from the Blob, giving it a name based on the current timestamp and the appropriate file extension.
-        setAudioFile(audioFile); // Update the state with the new audio file, which will trigger the useEffect to create a URL for playback.
-        audioChunksRef.current = []; // Clear the audio chunks after processing to free up memory.
-      }
+        const recordedFile = new File(
+          [audioBlob],
+          `recording-${Date.now()}.${extension}`,
+          {
+            type: mediaRecorder.mimeType,
+          }
+        );
+
+        setAudioFile(recordedFile);
+        setInputSource("record");
+        setTranscriptText("");
+
+        audioChunksRef.current = [];
+      };
       mediaRecorderRef.current = mediaRecorder;   // Store the MediaRecorder instance in a ref so we can access it later when stopping the recording.
       mediaRecorder.start(); // Start recording the audio stream. The MediaRecorder will now capture audio data from the microphone.
       setIsRecording(true);   // Update the state to indicate that recording is in progress.
@@ -196,7 +220,12 @@ function App() {
 
         <div className="input-grid">
           
-          <section className="card record-section">
+          <section className={`card record-section ${
+              inputSource === "upload" || inputSource === "text"
+                ? "disabled-card"
+                : ""
+            }`}
+          >
             <div className="card-title">
               <Mic className="blue-icon" size={30} />
               <h2>Record Voice</h2>
@@ -204,7 +233,7 @@ function App() {
             <button
               className={`record-button ${isRecording ? "recording" : ""}`}
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isLoading}
+              disabled={isLoading || inputSource === "upload" || inputSource === "text"}
               >
                 {isRecording ? (<RecordingWave />) : (<Mic size={28} />)}
                 <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
@@ -212,15 +241,50 @@ function App() {
             <p className="record-hint">
               Hold <strong>"V" </strong>key to record
             </p>
+            {inputSource === "record" && audioFile && (
+              <div className="recorded-preview">
+                <p className="audio-file-name">
+                  {audioFile.name}
+                </p>
+                {audioUrl && (
+                  <audio
+                    controls
+                    src={audioUrl}
+                    className="audio-preview"
+                  />
+                )}
+                <button
+                  type="button"
+                  className="remove-audio-button"
+                  onClick={removeAudioFile}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </section>
 
 
-          <section
-            className={`card upload-box ${isDragging ? "dragging" : ""} ${       // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
-              audioFile ? "has-file" : ""        // when audioFile is not null, className will include "has-file"
-            }`}
+          <section className={`card upload-section
+              ${isDragging ? "dragging" : ""}
+              ${inputSource === "upload" ? "has-file" : ""}
+              ${
+                inputSource === "record" || inputSource === "text"
+                  ? "disabled-card"
+                  : ""
+              }
+            `}
             onClick={() => {
-              if (!audioFile) {
+              if (
+                inputSource === "record" ||
+                inputSource === "text" ||
+                isRecording ||
+                isLoading
+              ) {
+                return;
+              }
+
+              if (inputSource !== "upload") {
                 document.getElementById("audio-upload")?.click();
               }
             }}
@@ -228,19 +292,52 @@ function App() {
             onDragEnter={(e) => {
               e.preventDefault();
               e.stopPropagation();
+
+              if (
+                inputSource === "record" ||
+                inputSource === "text" ||
+                isRecording
+              ) {
+                return;
+              }
+
               setIsDragging(true);
             }}
+
             onDragOver={(e) => {
               e.preventDefault();
               e.stopPropagation();
+
+              if (
+                inputSource === "record" ||
+                inputSource === "text" ||
+                isRecording
+              ) {
+                return;
+              }
+
               setIsDragging(true);
             }}
+
             onDragLeave={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setIsDragging(false);
             }}
-            onDrop={handleDrop}   // When a file is dropped, handleDrop will be called to process the file
+
+            onDrop={(e) => {
+              if (
+                inputSource === "record" ||
+                inputSource === "text" ||
+                isRecording
+              ) {
+                e.preventDefault();
+                return;
+              }
+
+              handleDrop(e);
+            }}    
+
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
@@ -268,7 +365,7 @@ function App() {
               }}
             />
 
-            {audioFile ? (
+            {inputSource === "upload" && audioFile ? (
               //  If an audio file has been uploaded, display its name, size, and type
               <>
                 <h2>{audioFile.name}</h2>
@@ -322,13 +419,17 @@ function App() {
                 </div>
               </>
             )}
-
-
-            
           </section>
 
 
-          <section className="card">
+          <section className={`card transcript-section ${
+              inputSource === "record" ||
+              inputSource === "upload" ||
+              isRecording
+                ? "disabled-card"
+                : ""
+            }`}
+          >
             <div className="card-title">
               <FileText className="blue-icon" size={30} />
               <h2>Paste Text Transcript</h2>
@@ -336,34 +437,32 @@ function App() {
             <textarea
               className="main-textarea"
               placeholder="Paste your transcript here..."
-              value={transcriptText} // textarea displays whatever is currently stored in transcriptText
-              onChange={(e) => setTranscriptText(e.target.value)} // every time the user types, React updates transcriptText
-            />
-            
-            {isLoading ? (
-              <div className="processing-indicator">
-                <LoaderCircle size={32} className="loading-icon" />
-              </div>
-            ) : (
-            <button
-              className="process-button"
-              onClick={() => setIsLoading(true)}
-              disabled={!transcriptText.trim()}
-            >
-              Process Text
-            </button>
-          )}
+              value={transcriptText}
+              disabled={
+                inputSource === "record" ||
+                inputSource === "upload" ||
+                isRecording ||
+                isLoading
+              }
+              onChange={(e) => {
+                const value = e.target.value;
 
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-        </section>
+                setTranscriptText(value);
+
+                if (value.trim()) {
+                  setInputSource("text");
+                  setAudioFile(null);
+                } else {
+                  setInputSource(null);
+                }
+              }}
+            />
+          </section>
 
         </div>
 
-        <section className="card">
+
+        <section className="card settings-section">
           <div className="card-title">
             <Settings className="blue-icon" size={28} />
             <h2>Settings</h2>
@@ -420,6 +519,37 @@ function App() {
               </option>
             </select>
           </div>
+        </section>
+
+
+        <section className="process-section">
+          {isLoading ? (
+            <div className="processing-indicator">
+              <LoaderCircle
+                size={32}
+                className="loading-icon"
+              />
+
+              <span>Processing...</span>
+            </div>
+          ) : (
+            <button
+              className="process-button main-process-button"
+              onClick={() => setIsLoading(true)}
+              disabled={
+                !audioFile &&
+                !transcriptText.trim()
+              }
+            >
+              Process
+            </button>
+          )}
+
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
         </section>
 
         <section className="card">

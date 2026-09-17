@@ -6,6 +6,7 @@ import {
   Sparkles,
   ChevronUp,
   Copy,
+  LoaderCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import "./App.css";
@@ -40,6 +41,13 @@ function App() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [transcriptText, setTranscriptText] = useState("");
+  const [cleanWithLLM, setCleanWithLLM] = useState(true);
+  const [systemPrompt, setSystemPrompt] = useState("default");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showOriginal, setShowOriginal] = useState(true);
+  const [cleanedTranscript, setCleanedTranscript] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const vHoldTimerRef = useRef<number | null>(null);
@@ -128,6 +136,7 @@ function App() {
 
     useEffect(() => { // This effect sets up event listeners for the "keydown" and "keyup" events on the window object. It listens for the "V" key to start and stop recording.
       const handleKeyDown = (event: KeyboardEvent) => {
+        if (isLoading) return;
         const target = event.target as HTMLElement;
         if (
             target.tagName === "INPUT" ||
@@ -149,6 +158,7 @@ function App() {
       };
       
       const handleKeyUp = (event: KeyboardEvent) => {
+        if (isLoading) return;
         const target = event.target as HTMLElement;
         if (
             target.tagName === "INPUT" ||
@@ -176,7 +186,17 @@ function App() {
         window.removeEventListener("keydown", handleKeyDown);
         window.removeEventListener("keyup", handleKeyUp);
       };
-    }, []);
+    }, [isLoading]);
+
+    const copyCleanedTranscript = async () => {
+      if (!cleanedTranscript) return;
+
+      try {
+        await navigator.clipboard.writeText(cleanedTranscript);
+      } catch (error) {
+        console.error("Failed to copy transcript:", error);
+      }
+    };
 
   return (
     <main className="app">
@@ -187,7 +207,11 @@ function App() {
         </header>
 
         <section className="record-section">
-          <button className={`record-button ${isRecording ? "recording" : ""}`} onClick={isRecording ? stopRecording : startRecording}>
+          <button
+            className={`record-button ${isRecording ? "recording" : ""}`}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isLoading}
+          >
             {isRecording ? (
               <RecordingWave />
             ) : (
@@ -321,11 +345,29 @@ function App() {
           <textarea
             className="main-textarea"
             placeholder="Paste your transcript here..."
+            value={transcriptText} // textarea displays whatever is currently stored in transcriptText
+            onChange={(e) => setTranscriptText(e.target.value)} // every time the user types, React updates transcriptText
           />
 
-          <button className="process-button">
-            Process Text
-          </button>
+          {isLoading ? (
+            <div className="processing-indicator">
+              <LoaderCircle size={32} className="loading-icon" />
+            </div>
+          ) : (
+            <button
+              className="process-button"
+              onClick={() => setIsLoading(true)}
+              disabled={!transcriptText.trim()}
+            >
+              Process Text
+            </button>
+          )}
+
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
         </section>
 
         <section className="card">
@@ -337,7 +379,9 @@ function App() {
           <label className="checkbox-row">
             <input
               type="checkbox"
-              defaultChecked
+              checked={cleanWithLLM}
+              onChange={(e) => setCleanWithLLM(e.target.checked)}
+              disabled={isLoading}
             />
 
             <div>
@@ -364,7 +408,12 @@ function App() {
               System Prompt
             </label>
 
-            <select id="systemPrompt" defaultValue="default">
+            <select
+              id="systemPrompt"
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              disabled={isLoading || !cleanWithLLM}
+            >
               <option value="default">
                 Default Cleaner
               </option>
@@ -391,14 +440,18 @@ function App() {
               <h2>Original Transcription</h2>
             </div>
 
-            <button className="collapse-button">
-              <ChevronUp size={24} />
+            <button
+              className="collapse-button"
+              onClick={() => setShowOriginal((prev) => !prev)}
+            >
+              <ChevronUp size={24} className={`collapse-icon ${showOriginal ? "" : "collapsed"}`}/>
             </button>
           </div>
-
-          <div className="result-box">
-            Original transcription will appear here...
-          </div>
+          {showOriginal && (
+            <div className="result-box">
+              {transcriptText || "Original transcription will appear here..."}
+            </div>
+          )}
         </section>
 
         <section className="card">
@@ -412,10 +465,14 @@ function App() {
           </div>
 
           <div className="result-box cleaned-box">
-            Cleaned transcription will appear here...
+            {cleanedTranscript || "Cleaned transcription will appear here..."}
           </div>
 
-          <button className="copy-button">
+          <button
+            className="copy-button"
+            onClick={copyCleanedTranscript}
+            disabled={!cleanedTranscript.trim()}
+          >
             <Copy size={20} />
             <span>Copy</span>
           </button>

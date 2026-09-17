@@ -127,6 +127,11 @@ select {
   border-color: #ff8a87;
 }
 
+.record-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .record-hint {
   margin-top: 14px;
   color: #d0d8e4;
@@ -308,7 +313,7 @@ select {
   color: #98a6b8;
 }
 
-/* Process button */
+/* Process */
 
 .process-button {
   margin-top: 22px;
@@ -321,6 +326,37 @@ select {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
+}
+
+.process-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-icon {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-message {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+
+  background: #fee2e2;
+  color: #b91c1c;
+
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* Settings */
@@ -371,6 +407,14 @@ select {
   background: #445575;
   color: white;
   font-size: 16px;
+}
+
+.collapse-icon {
+  transition: transform 0.2s ease;
+}
+
+.collapse-icon.collapsed {
+  transform: rotate(180deg);
 }
 
 /* Results */
@@ -441,6 +485,11 @@ select {
   font-size: 18px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.copy-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Mobile */

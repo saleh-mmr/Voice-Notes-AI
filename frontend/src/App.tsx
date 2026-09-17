@@ -47,6 +47,14 @@ function App() {
     }
     setAudioFile(file);
   };
+  
+  const removeAudioFile = () => {
+    setAudioFile(null);
+    const input = document.getElementById("audio-upload") as HTMLInputElement | null; // we have e.target.value = ""; in the onChange handler, so these lines are optional
+    if (input) {
+      input.value = "";
+    }
+  };
 
   const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();   // Don't let the browser open the dropped file
@@ -79,8 +87,14 @@ function App() {
         <Divider />
 
       <section
-        className={`upload-box ${isDragging ? "dragging" : ""}`}          // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
-        onClick={() => document.getElementById("audio-upload")?.click()}  // click on the whole box to trigger input file selection, it tries to find the input element by its ID and programmatically clicks it, opening the file selection dialog.
+        className={`upload-box ${isDragging ? "dragging" : ""} ${       // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
+          audioFile ? "has-file" : ""        // when audioFile is not null, className will include "has-file"
+        }`}
+        onClick={() => {
+          if (!audioFile) {
+            document.getElementById("audio-upload")?.click();
+          }
+        }}
         
         onDragEnter={(e) => {
           e.preventDefault();
@@ -101,7 +115,7 @@ function App() {
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (!audioFile && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             document.getElementById("audio-upload")?.click();
           }
@@ -120,7 +134,6 @@ function App() {
           }}
         />
 
-        <Upload className="upload-icon" size={64} />
         {audioFile ? (
           //  If an audio file has been uploaded, display its name, size, and type
           <>
@@ -134,11 +147,32 @@ function App() {
               {audioFile.type || "Audio file"}
             </div>
 
-            {audioUrl && (<audio controls src={audioUrl} className="audio-preview"/>)}
+            {audioUrl && (
+              <audio
+              controls
+              src={audioUrl}
+              onClick={(e) => e.stopPropagation()}
+              className="audio-preview"/>)}
+
+            <div className="audio-actions" onClick={(e) => e.stopPropagation()}>
+
+            <button type="button"
+              onClick={() => {
+                document.getElementById("audio-upload")?.click();
+              }}>
+              Replace
+            </button>
+
+            <button type="button" onClick={removeAudioFile}>
+              Remove
+            </button>
+          </div>
           </>
         ) : (
           // If no audio file has been uploaded, display instructions for uploading
-          <>.     
+          <>
+            <Upload className="upload-icon" size={64} />
+
             <h2>
               {isDragging ? "Drop Audio File Here" : "Upload Audio File"}
             </h2>

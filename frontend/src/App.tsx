@@ -12,18 +12,6 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import "./App.css";
 
 
-
-function Divider() {
-  return (
-    <div className="divider">
-      <div className="divider-line"></div>
-      <span>OR</span>
-      <div className="divider-line"></div>
-    </div>
-  );
-}
-
-
 function RecordingWave() {
   return (
     <div className="recording-wave" aria-hidden="true">
@@ -206,154 +194,157 @@ function App() {
           <p>Record audio or upload a file to transcribe with AI</p>
         </header>
 
-        <section className="record-section">
-          <button
-            className={`record-button ${isRecording ? "recording" : ""}`}
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading}
-          >
-            {isRecording ? (
-              <RecordingWave />
-            ) : (
-              <Mic size={28} />
-            )}
-            <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
-          </button>
-
-          <p className="record-hint">
-            Hold <strong>"V"</strong> key to record
-          </p>
-        </section>
-
-        <Divider />
-
-      <section
-        className={`upload-box ${isDragging ? "dragging" : ""} ${       // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
-          audioFile ? "has-file" : ""        // when audioFile is not null, className will include "has-file"
-        }`}
-        onClick={() => {
-          if (!audioFile) {
-            document.getElementById("audio-upload")?.click();
-          }
-        }}
-        
-        onDragEnter={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(true);
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setIsDragging(false);
-        }}
-        onDrop={handleDrop}   // When a file is dropped, handleDrop will be called to process the file
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (!audioFile && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            document.getElementById("audio-upload")?.click();
-          }
-        }}
-      >
-        <input
-          type="file"
-          id="audio-upload"
-          accept="audio/*"
-          hidden
-
-          onChange={(e) => {
-            const file = e.target.files?.[0]; // e.target refers to the input element, and files is a FileList containing the selected files. The code retrieves the first file from this list.
-            handleAudioFile(file);
-            e.target.value = "";            // Allows selecting the same file again later
-          }}
-        />
-
-        {audioFile ? (
-          //  If an audio file has been uploaded, display its name, size, and type
-          <>
-            <h2>{audioFile.name}</h2>
-
-            <p>
-              {(audioFile.size / 1024 / 1024).toFixed(2)} MB
-            </p>
-
-            <div className="formats">
-              {audioFile.type || "Audio file"}
+        <div className="input-grid">
+          
+          <section className="card record-section">
+            <div className="card-title">
+              <Mic className="blue-icon" size={30} />
+              <h2>Record Voice</h2>
             </div>
+            <button
+              className={`record-button ${isRecording ? "recording" : ""}`}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
+              >
+                {isRecording ? (<RecordingWave />) : (<Mic size={28} />)}
+                <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
+            </button>
+            <p className="record-hint">
+              Hold <strong>"V" </strong>key to record
+            </p>
+          </section>
 
-            {audioUrl && (
-              <audio
-              controls
-              src={audioUrl}
-              onClick={(e) => e.stopPropagation()}
-              className="audio-preview"/>)}
 
-            <div className="audio-actions" onClick={(e) => e.stopPropagation()}>
-
-            <button type="button"
-              onClick={() => {
+          <section
+            className={`card upload-box ${isDragging ? "dragging" : ""} ${       // when isDragging is true, className will be "upload-box dragging", otherwise it will be just "upload-box"
+              audioFile ? "has-file" : ""        // when audioFile is not null, className will include "has-file"
+            }`}
+            onClick={() => {
+              if (!audioFile) {
                 document.getElementById("audio-upload")?.click();
-              }}>
-              Replace
-            </button>
-
-            <button type="button" onClick={removeAudioFile}>
-              Remove
-            </button>
-          </div>
-          </>
-        ) : (
-          // If no audio file has been uploaded, display instructions for uploading
-          <>
-            <Upload className="upload-icon" size={64} />
-
-            <h2>
-              {isDragging ? "Drop Audio File Here" : "Upload Audio File"}
-            </h2>
-
-            <p>
-              {isDragging
-                ? "Release to upload"
-                : "Drag and drop or click to browse"}
-            </p>
-
-            <div className="formats">
-              MP3, WAV, M4A, WebM, OGG
+              }
+            }}
+            
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+            }}
+            onDrop={handleDrop}   // When a file is dropped, handleDrop will be called to process the file
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (!audioFile && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                document.getElementById("audio-upload")?.click();
+              }
+            }}
+          >
+            <div className="card-title">
+              <Upload className="blue-icon" size={30} />
+              <h2>Upload Audio</h2>
             </div>
-          </>
-        )}
+
+            <input
+              type="file"
+              id="audio-upload"
+              accept="audio/*"
+              hidden
+
+              onChange={(e) => {
+                const file = e.target.files?.[0]; // e.target refers to the input element, and files is a FileList containing the selected files. The code retrieves the first file from this list.
+                handleAudioFile(file);
+                e.target.value = "";            // Allows selecting the same file again later
+              }}
+            />
+
+            {audioFile ? (
+              //  If an audio file has been uploaded, display its name, size, and type
+              <>
+                <h2>{audioFile.name}</h2>
+
+                <p>
+                  {(audioFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+
+                <div className="formats">
+                  {audioFile.type || "Audio file"}
+                </div>
+
+                {audioUrl && (
+                  <audio
+                  controls
+                  src={audioUrl}
+                  onClick={(e) => e.stopPropagation()}
+                  className="audio-preview"/>)}
+
+                <div className="audio-actions" onClick={(e) => e.stopPropagation()}>
+
+                <button type="button"
+                  onClick={() => {
+                    document.getElementById("audio-upload")?.click();
+                  }}>
+                  Replace
+                </button>
+
+                <button type="button" onClick={removeAudioFile}>
+                  Remove
+                </button>
+              </div>
+              </>
+            ) : (
+              // If no audio file has been uploaded, display instructions for uploading
+              <>
+                <Upload className="upload-icon" size={64} />
+
+                <h2>
+                  {isDragging ? "Drop Audio File Here" : "Choose an audio file"}
+                </h2>
+
+                <p>
+                  {isDragging
+                    ? "Release to upload"
+                    : "Drag and drop or click to browse"}
+                </p>
+
+                <div className="formats">
+                  MP3, WAV, M4A, WebM, OGG
+                </div>
+              </>
+            )}
 
 
-        
-      </section>
+            
+          </section>
 
-        <Divider />
 
-        <section className="card">
-          <div className="card-title">
-            <FileText className="blue-icon" size={30} />
-            <h2>Paste Text Transcript</h2>
-          </div>
-
-          <textarea
-            className="main-textarea"
-            placeholder="Paste your transcript here..."
-            value={transcriptText} // textarea displays whatever is currently stored in transcriptText
-            onChange={(e) => setTranscriptText(e.target.value)} // every time the user types, React updates transcriptText
-          />
-
-          {isLoading ? (
-            <div className="processing-indicator">
-              <LoaderCircle size={32} className="loading-icon" />
+          <section className="card">
+            <div className="card-title">
+              <FileText className="blue-icon" size={30} />
+              <h2>Paste Text Transcript</h2>
             </div>
-          ) : (
+            <textarea
+              className="main-textarea"
+              placeholder="Paste your transcript here..."
+              value={transcriptText} // textarea displays whatever is currently stored in transcriptText
+              onChange={(e) => setTranscriptText(e.target.value)} // every time the user types, React updates transcriptText
+            />
+            
+            {isLoading ? (
+              <div className="processing-indicator">
+                <LoaderCircle size={32} className="loading-icon" />
+              </div>
+            ) : (
             <button
               className="process-button"
               onClick={() => setIsLoading(true)}
@@ -369,6 +360,8 @@ function App() {
             </div>
           )}
         </section>
+
+        </div>
 
         <section className="card">
           <div className="card-title">

@@ -1,28 +1,21 @@
 import {
-  Mic,
-  Upload,
-  FileText,
-  Settings,
-  Sparkles,
-  ChevronUp,
-  Copy,
-  LoaderCircle,
-} from "lucide-react";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
+
+import RecordVoiceCard from "./components/RecordVoiceCard";
+import UploadAudioCard from "./components/UploadAudioCard";
+import TranscriptInputCard from "./components/TranscriptInputCard";
+import SettingsCard from "./components/SettingsCard";
+import ProcessSection from "./components/ProcessSection";
+import OriginalTranscriptCard from "./components/OriginalTranscriptCard";
+import CleanedTranscriptCard from "./components/CleanedTranscriptCard";
+
+import type { InputSource } from "./types";
+
 import "./App.css";
-
-
-function RecordingWave() {
-  return (
-    <div className="recording-wave" aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-      <span></span>
-      <span></span>
-    </div>
-  );
-}
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -36,7 +29,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [cleanedTranscript, setCleanedTranscript] = useState("");
-  const [inputSource, setInputSource] = useState<"record" | "upload" | "text" | null>(null);
+  const [inputSource, setInputSource] = useState<InputSource>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const vHoldTimerRef = useRef<number | null>(null);
@@ -219,387 +212,73 @@ function App() {
         </header>
 
         <div className="input-grid">
-          
-          <section className={`card record-section ${
-              inputSource === "upload" || inputSource === "text"
-                ? "disabled-card"
-                : ""
-            }`}
-          >
-            <div className="card-title">
-              <Mic className="blue-icon" size={30} />
-              <h2>Record Voice</h2>
-            </div>
-            <button
-              className={`record-button ${isRecording ? "recording" : ""}`}
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isLoading || inputSource === "upload" || inputSource === "text"}
-              >
-                {isRecording ? (<RecordingWave />) : (<Mic size={28} />)}
-                <span>{isRecording ? "Stop Recording" : "Start Recording"}</span>
-            </button>
-            <p className="record-hint">
-              Hold <strong>"V" </strong>key to record
-            </p>
-            {inputSource === "record" && audioFile && (
-              <div className="recorded-preview">
-                <p className="audio-file-name">
-                  {audioFile.name}
-                </p>
-                {audioUrl && (
-                  <audio
-                    controls
-                    src={audioUrl}
-                    className="audio-preview"
-                  />
-                )}
-                <button
-                  type="button"
-                  className="remove-audio-button"
-                  onClick={removeAudioFile}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </section>
+
+          <RecordVoiceCard
+            isRecording={isRecording}
+            isLoading={isLoading}
+            inputSource={inputSource}
+            audioFile={audioFile}
+            audioUrl={audioUrl}
+            startRecording={startRecording}
+            stopRecording={stopRecording}
+            removeAudioFile={removeAudioFile}
+          />
 
 
-          <section className={`card upload-section
-              ${isDragging ? "dragging" : ""}
-              ${inputSource === "upload" ? "has-file" : ""}
-              ${
-                inputSource === "record" || inputSource === "text"
-                  ? "disabled-card"
-                  : ""
-              }
-            `}
-            onClick={() => {
-              if (
-                inputSource === "record" ||
-                inputSource === "text" ||
-                isRecording ||
-                isLoading
-              ) {
-                return;
-              }
+          <UploadAudioCard
+            isDragging={isDragging}
+            inputSource={inputSource}
+            isRecording={isRecording}
+            isLoading={isLoading}
+            audioFile={audioFile}
+            audioUrl={audioUrl}
+            setIsDragging={setIsDragging}
+            handleDrop={handleDrop}
+            handleAudioFile={handleAudioFile}
+            removeAudioFile={removeAudioFile}
+          />
 
-              if (inputSource !== "upload") {
-                document.getElementById("audio-upload")?.click();
-              }
-            }}
-            
-            onDragEnter={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-
-              if (
-                inputSource === "record" ||
-                inputSource === "text" ||
-                isRecording
-              ) {
-                return;
-              }
-
-              setIsDragging(true);
-            }}
-
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-
-              if (
-                inputSource === "record" ||
-                inputSource === "text" ||
-                isRecording
-              ) {
-                return;
-              }
-
-              setIsDragging(true);
-            }}
-
-            onDragLeave={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragging(false);
-            }}
-
-            onDrop={(e) => {
-              if (
-                inputSource === "record" ||
-                inputSource === "text" ||
-                isRecording
-              ) {
-                e.preventDefault();
-                return;
-              }
-
-              handleDrop(e);
-            }}    
-
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (!audioFile && (e.key === "Enter" || e.key === " ")) {
-                e.preventDefault();
-                document.getElementById("audio-upload")?.click();
-              }
-            }}
-          >
-            <div className="card-title">
-              <Upload className="blue-icon" size={30} />
-              <h2>Upload Audio</h2>
-            </div>
-
-            <input
-              type="file"
-              id="audio-upload"
-              accept="audio/*"
-              hidden
-
-              onChange={(e) => {
-                const file = e.target.files?.[0]; // e.target refers to the input element, and files is a FileList containing the selected files. The code retrieves the first file from this list.
-                handleAudioFile(file);
-                e.target.value = "";            // Allows selecting the same file again later
-              }}
-            />
-
-            {inputSource === "upload" && audioFile ? (
-              //  If an audio file has been uploaded, display its name, size, and type
-              <>
-                <h2>{audioFile.name}</h2>
-
-                <p>
-                  {(audioFile.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-
-                <div className="formats">
-                  {audioFile.type || "Audio file"}
-                </div>
-
-                {audioUrl && (
-                  <audio
-                  controls
-                  src={audioUrl}
-                  onClick={(e) => e.stopPropagation()}
-                  className="audio-preview"/>)}
-
-                <div className="audio-actions" onClick={(e) => e.stopPropagation()}>
-
-                <button type="button"
-                  onClick={() => {
-                    document.getElementById("audio-upload")?.click();
-                  }}>
-                  Replace
-                </button>
-
-                <button type="button" onClick={removeAudioFile}>
-                  Remove
-                </button>
-              </div>
-              </>
-            ) : (
-              // If no audio file has been uploaded, display instructions for uploading
-              <>
-                <Upload className="upload-icon" size={64} />
-
-                <h2>
-                  {isDragging ? "Drop Audio File Here" : "Choose an audio file"}
-                </h2>
-
-                <p>
-                  {isDragging
-                    ? "Release to upload"
-                    : "Drag and drop or click to browse"}
-                </p>
-
-                <div className="formats">
-                  MP3, WAV, M4A, WebM, OGG
-                </div>
-              </>
-            )}
-          </section>
-
-
-          <section className={`card transcript-section ${
-              inputSource === "record" ||
-              inputSource === "upload" ||
-              isRecording
-                ? "disabled-card"
-                : ""
-            }`}
-          >
-            <div className="card-title">
-              <FileText className="blue-icon" size={30} />
-              <h2>Paste Text Transcript</h2>
-            </div>
-            <textarea
-              className="main-textarea"
-              placeholder="Paste your transcript here..."
-              value={transcriptText}
-              disabled={
-                inputSource === "record" ||
-                inputSource === "upload" ||
-                isRecording ||
-                isLoading
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-
-                setTranscriptText(value);
-
-                if (value.trim()) {
-                  setInputSource("text");
-                  setAudioFile(null);
-                } else {
-                  setInputSource(null);
-                }
-              }}
-            />
-          </section>
+          <TranscriptInputCard
+            transcriptText={transcriptText}
+            inputSource={inputSource}
+            isRecording={isRecording}
+            isLoading={isLoading}
+            setTranscriptText={setTranscriptText}
+            setInputSource={setInputSource}
+            setAudioFile={setAudioFile}
+          />
 
         </div>
 
 
-        <section className="card settings-section">
-          <div className="card-title">
-            <Settings className="blue-icon" size={28} />
-            <h2>Settings</h2>
-          </div>
-
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={cleanWithLLM}
-              onChange={(e) => setCleanWithLLM(e.target.checked)}
-              disabled={isLoading}
-            />
-
-            <div>
-              <div className="checkbox-title">
-                <Sparkles
-                  size={18}
-                  className="purple-icon"
-                />
-
-                <span>
-                  Clean transcription with LLM
-                </span>
-              </div>
-
-              <p className="checkbox-description">
-                Use AI to clean up transcription
-                (remove filler words, fix grammar)
-              </p>
-            </div>
-          </label>
-
-          <div className="select-group">
-            <label htmlFor="systemPrompt">
-              System Prompt
-            </label>
-
-            <select
-              id="systemPrompt"
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              disabled={isLoading || !cleanWithLLM}
-            >
-              <option value="default">
-                Default Cleaner
-              </option>
-
-              <option value="formal">
-                Formal Style
-              </option>
-
-              <option value="short">
-                Short Summary Style
-              </option>
-            </select>
-          </div>
-        </section>
+        <SettingsCard
+          cleanWithLLM={cleanWithLLM}
+          systemPrompt={systemPrompt}
+          isLoading={isLoading}
+          setCleanWithLLM={setCleanWithLLM}
+          setSystemPrompt={setSystemPrompt}
+        />
 
 
-        <section className="process-section">
-          {isLoading ? (
-            <div className="processing-indicator">
-              <LoaderCircle
-                size={32}
-                className="loading-icon"
-              />
+        <ProcessSection
+          isLoading={isLoading}
+          error={error}
+          audioFile={audioFile}
+          transcriptText={transcriptText}
+          onProcess={() => setIsLoading(true)}
+        />
 
-              <span>Processing...</span>
-            </div>
-          ) : (
-            <button
-              className="process-button main-process-button"
-              onClick={() => setIsLoading(true)}
-              disabled={
-                !audioFile &&
-                !transcriptText.trim()
-              }
-            >
-              Process
-            </button>
-          )}
+        <OriginalTranscriptCard
+          transcriptText={transcriptText}
+          showOriginal={showOriginal}
+          setShowOriginal={setShowOriginal}
+        />
 
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-        </section>
+        <CleanedTranscriptCard
+          cleanedTranscript={cleanedTranscript}
+          onCopy={copyCleanedTranscript}
+        />
 
-        <section className="card">
-          <div className="result-header">
-            <div className="card-title no-margin">
-              <FileText
-                className="blue-icon"
-                size={30}
-              />
-
-              <h2>Original Transcription</h2>
-            </div>
-
-            <button
-              className="collapse-button"
-              onClick={() => setShowOriginal((prev) => !prev)}
-            >
-              <ChevronUp size={24} className={`collapse-icon ${showOriginal ? "" : "collapsed"}`}/>
-            </button>
-          </div>
-          {showOriginal && (
-            <div className="result-box">
-              {transcriptText || "Original transcription will appear here..."}
-            </div>
-          )}
-        </section>
-
-        <section className="card">
-          <div className="card-title">
-            <Sparkles
-              className="blue-icon"
-              size={30}
-            />
-
-            <h2>Cleaned Transcription</h2>
-          </div>
-
-          <div className="result-box cleaned-box">
-            {cleanedTranscript || "Cleaned transcription will appear here..."}
-          </div>
-
-          <button
-            className="copy-button"
-            onClick={copyCleanedTranscript}
-            disabled={!cleanedTranscript.trim()}
-          >
-            <Copy size={20} />
-            <span>Copy</span>
-          </button>
-        </section>
       </div>
     </main>
   );

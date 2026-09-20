@@ -1,7 +1,9 @@
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.schemas import AudioMetadata, ProcessResponse, TextProcessRequest
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from app.prompts import get_system_prompt
+from app.services.ollama_service import generate_with_ollama
 
 '''
 when you run uvicorn app.main:app --reload, Uvicorn will look for the app object in
@@ -58,11 +60,34 @@ async def process_audio(
 # This endpoint handles text processing and returns a ProcessResponse.
 @app.post("/text/process", response_model=ProcessResponse)
 async def process_text(request: TextProcessRequest):
+    if not request.clean_with_llm:
+        return ProcessResponse(
+            source="text",
+            original_text=request.text,
+            cleaned_text=request.text,
+            clean_with_llm=False,
+            system_prompt=request.system_prompt,
+            audio=None,
+        )
+
+    system_prompt = get_system_prompt(request.system_prompt)
+
+    try:
+        cleaned_text = await generate_with_ollama(
+            text=request.text,
+            system_prompt=system_prompt,
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process text with Ollama.",
+        ) from error
+
     return ProcessResponse(
         source="text",
         original_text=request.text,
-        cleaned_text=request.text,
-        clean_with_llm=request.clean_with_llm,
+        cleaned_text=cleaned_text,
+        clean_with_llm=True,
         system_prompt=request.system_prompt,
         audio=None,
     )

@@ -35,29 +35,44 @@ function TranscriptInputCard({
         <h2>Paste Text Transcript</h2>
       </div>
 
-      <textarea
-        className="main-textarea"
-        placeholder="Paste your transcript here..."
-        value={transcriptText}
-        disabled={
-          inputSource === "record" ||
-          inputSource === "upload" ||
-          isRecording ||
-          isLoading
-        }
-        onChange={(e) => {
-          const value = e.target.value;
-
-          setTranscriptText(value);
-
-          if (value.trim()) {
-            setInputSource("text");
-            setAudioFile(null);
-          } else {
-            setInputSource(null);
+      <div className="textarea-wrapper">
+        <textarea
+          className="main-textarea"
+          placeholder="Paste your transcript here..."
+          value={transcriptText}
+          disabled={
+            inputSource === "record" ||
+            inputSource === "upload" ||
+            isRecording ||
+            isLoading
           }
-        }}
-      />
+          onChange={(e) => {
+            const value = e.target.value;
+
+            setTranscriptText(value);
+
+            if (value.trim()) {
+              setInputSource("text");
+              setAudioFile(null);
+            } else {
+              setInputSource(null);
+            }
+          }}
+        />
+
+        <button
+          type="button"
+          className="clear-text-button"
+          onClick={() => {
+            setTranscriptText("");
+            setInputSource(null);
+          }}
+          disabled={!transcriptText.trim()}
+        >
+          Clear
+        </button>
+      </div>
+
     </section>
   );
 }

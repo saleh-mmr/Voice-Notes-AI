@@ -547,6 +547,59 @@ button {
 }
 
 
+.clear-text-button {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #edf3f9;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clear-text-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.main-textarea {
+  padding-bottom: 52px;
+}
+
+.clear-text-button {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+
+  padding: 7px 12px;
+  border: none;
+  border-radius: 9px;
+
+  background: #dbe4ee;
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.clear-text-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.clear-text-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* =========================
    PROCESS BUTTON
 ========================= */

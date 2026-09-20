@@ -12,7 +12,7 @@ import SettingsCard from "./components/SettingsCard";
 import ProcessSection from "./components/ProcessSection";
 import OriginalTranscriptCard from "./components/OriginalTranscriptCard";
 import CleanedTranscriptCard from "./components/CleanedTranscriptCard";
-import {processText, uploadAudio,} from "./services/api";
+import {processAudio, processText,} from "./services/api";
 import type { InputSource } from "./types";
 
 import "./App.css";
@@ -232,9 +232,14 @@ function App() {
           (inputSource === "record" || inputSource === "upload") &&
           audioFile
         ) {
-          const result = await uploadAudio(audioFile);
+          const result = await processAudio(
+            audioFile,
+            cleanWithLLM,
+            systemPrompt
+          );
 
-          console.log("Audio upload response:", result);
+          setTranscriptText(result.original_text);
+          setCleanedTranscript(result.cleaned_text);
 
           return;
         }

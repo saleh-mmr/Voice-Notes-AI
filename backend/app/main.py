@@ -1,6 +1,7 @@
-from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from app.schemas import AudioMetadata, ProcessResponse, TextProcessRequest
+from fastapi import FastAPI, File, Form, UploadFile
 
 '''
 when you run uvicorn app.main:app --reload, Uvicorn will look for the app object in
@@ -30,31 +31,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class TextProcessRequest(BaseModel):
-    text: str
-    clean_with_llm: bool = True
-    system_prompt: str = "default"
-
-
 # This gives you a very simple way to test whether the backend is alive.
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-# This endpoint allows you to upload an audio file. It returns the filename and content type of the uploaded file.
-# async def is a good fit for file-upload endpoints because file operations are I/O-bound.
-@app.post("/audio/upload")
-async def upload_audio(file: UploadFile = File(...)):
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-    }
+# This endpoint handles audio file uploads and returns a ProcessResponse.
+@app.post("/audio/process", response_model=ProcessResponse)
+async def process_audio(
+    file: UploadFile = File(...),
+    clean_with_llm: bool = Form(True),
+    system_prompt: str = Form("default"),
+):
+    return ProcessResponse(
+        source="audio",
+        original_text="",
+        cleaned_text="",
+        clean_with_llm=clean_with_llm,
+        system_prompt=system_prompt,
+        audio=AudioMetadata(
+            filename=file.filename or "audio",
+            content_type=file.content_type,
+        ),
+    )
 
-@app.post("/text/process")
+# This endpoint handles text processing and returns a ProcessResponse.
+@app.post("/text/process", response_model=ProcessResponse)
 async def process_text(request: TextProcessRequest):
-    return {
-        "original_text": request.text,
-        "cleaned_text": request.text,
-        "clean_with_llm": request.clean_with_llm,
-        "system_prompt": request.system_prompt,
-    }
+    return ProcessResponse(
+        source="text",
+        original_text=request.text,
+        cleaned_text=request.text,
+        clean_with_llm=request.clean_with_llm,
+        system_prompt=request.system_prompt,
+        audio=None,
+    )

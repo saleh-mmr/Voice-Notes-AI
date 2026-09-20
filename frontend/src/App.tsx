@@ -12,7 +12,7 @@ import SettingsCard from "./components/SettingsCard";
 import ProcessSection from "./components/ProcessSection";
 import OriginalTranscriptCard from "./components/OriginalTranscriptCard";
 import CleanedTranscriptCard from "./components/CleanedTranscriptCard";
-
+import {processText, uploadAudio,} from "./services/api";
 import type { InputSource } from "./types";
 
 import "./App.css";
@@ -93,7 +93,8 @@ function App() {
           audioChunksRef.current.push(event.data); // Store the audio data in the audioChunksRef array for later processing.
         }
       };
-
+      // When the recording is stopped, we create a Blob from the collected audio chunks and create a File object to represent the recorded audio.
+      // We also determine the file extension based on the MIME type of the recording.
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, {
           type: mediaRecorder.mimeType,
@@ -161,7 +162,9 @@ function App() {
           vHoldTimerRef.current = null;
         }, 300);
       };
-      
+
+      // This function is called when the user releases the "V" key.
+      // It checks if the recording is in progress and stops it if necessary.
       const handleKeyUp = (event: KeyboardEvent) => {
         if (isLoading) return;
         const target = event.target as HTMLElement;
@@ -193,6 +196,7 @@ function App() {
       };
     }, [isLoading]);
 
+    // This function copies the cleaned transcript to the clipboard when the user clicks the "Copy" button.
     const copyCleanedTranscript = async () => {
       if (!cleanedTranscript) return;
 
@@ -200,6 +204,50 @@ function App() {
         await navigator.clipboard.writeText(cleanedTranscript);
       } catch (error) {
         console.error("Failed to copy transcript:", error);
+      }
+    };
+
+
+    // This function handles the processing of either text or audio based on the input source.
+    // It sets the loading state, clears any previous errors, and calls the appropriate API function.
+    const handleProcess = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        if (inputSource === "text") {
+          const result = await processText({
+            text: transcriptText,
+            clean_with_llm: cleanWithLLM,
+            system_prompt: systemPrompt,
+          });
+
+          setTranscriptText(result.original_text);
+          setCleanedTranscript(result.cleaned_text);
+
+          return;
+        }
+
+        if (
+          (inputSource === "record" || inputSource === "upload") &&
+          audioFile
+        ) {
+          const result = await uploadAudio(audioFile);
+
+          console.log("Audio upload response:", result);
+
+          return;
+        }
+
+        setError("Please provide audio or transcript text first.");
+      } catch (error) {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("Something went wrong while processing.");
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -265,7 +313,7 @@ function App() {
           error={error}
           audioFile={audioFile}
           transcriptText={transcriptText}
-          onProcess={() => setIsLoading(true)}
+          onProcess={handleProcess}
         />
 
         <OriginalTranscriptCard

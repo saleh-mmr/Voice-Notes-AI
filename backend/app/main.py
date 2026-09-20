@@ -63,10 +63,25 @@ async def process_audio(
 
         transcript = transcribe_audio(temp_file_path)
 
+        cleaned_text = transcript
+        if clean_with_llm:
+            prompt = get_system_prompt(system_prompt)
+
+            try:
+                cleaned_text = await generate_with_ollama(
+                    text=transcript,
+                    system_prompt=prompt,
+                )
+            except Exception as error:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Audio was transcribed, but Ollama cleaning failed.",
+                ) from error
+
         return ProcessResponse(
             source="audio",
             original_text=transcript,
-            cleaned_text=transcript,
+            cleaned_text=cleaned_text,
             clean_with_llm=clean_with_llm,
             system_prompt=system_prompt,
             audio=AudioMetadata(

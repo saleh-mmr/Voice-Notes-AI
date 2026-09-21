@@ -1,340 +1,155 @@
-# Local AI Voice Transcript App
+# Voice Notes AI
 
-A full-stack local AI application for recording, uploading, transcribing, cleaning, and rewriting speech or pasted text using entirely local AI models.
+A local AI-powered voice transcription application built with React, TypeScript, FastAPI, Faster-Whisper, and Ollama.
 
-The application combines:
+Voice Notes AI lets you record audio, upload audio files, or paste existing text. Audio is transcribed locally with Faster-Whisper and can optionally be cleaned and rewritten by a local Ollama language model.
 
-- **React + TypeScript + Vite** for the frontend
-- **FastAPI** for the backend API
-- **faster-whisper** for local speech-to-text transcription
-- **Ollama** for local LLM-based transcript cleaning and rewriting
-- **Docker / Docker Compose** for containerized deployment
-- **Nginx** for serving the production frontend
-
-The project is designed so that audio transcription and text cleanup can run locally without sending transcript data to an external AI API.
+The application can run locally during development or as a complete Docker Compose stack.
 
 ---
 
-# Table of Contents
+## Table of Contents
 
-- [Overview](#overview)
 - [Features](#features)
+  - [Voice recording](#voice-recording)
+  - [Audio upload](#audio-upload)
+  - [Paste existing transcripts](#paste-existing-transcripts)
+  - [Local speech-to-text](#local-speech-to-text)
+  - [Local AI text cleanup](#local-ai-text-cleanup)
+  - [Optional AI cleanup](#optional-ai-cleanup)
+  - [Original and cleaned transcript](#original-and-cleaned-transcript)
+- [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
-- [Application Flow](#application-flow)
-- [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
-- [Frontend](#frontend)
-- [Backend](#backend)
-- [Whisper Transcription](#whisper-transcription)
-- [Ollama Text Processing](#ollama-text-processing)
-- [Prompt Modes](#prompt-modes)
+- [Getting Started](#getting-started)
+- [Option 1 — Docker Compose](#option-1--docker-compose)
+  - [Requirements](#requirements)
+  - [Clone the repository](#clone-the-repository)
+  - [Build the containers](#build-the-containers)
+  - [Start the application](#start-the-application)
+  - [Install the Ollama model](#install-the-ollama-model)
+  - [Open the application](#open-the-application)
+  - [Check container status](#check-container-status)
+  - [View logs](#view-logs)
+  - [Stop the application](#stop-the-application)
+- [Option 2 — Local Development](#option-2--local-development)
+  - [Backend Setup](#backend-setup)
+  - [Ollama Setup](#ollama-setup)
+  - [Frontend Setup](#frontend-setup)
+- [Environment Variables](#environment-variables)
+  - [Frontend](#frontend)
+  - [Backend](#backend)
+  - [OLLAMA_URL](#ollama_url)
+  - [OLLAMA_MODEL](#ollama_model)
+  - [WHISPER_MODEL](#whisper_model)
+  - [WHISPER_DEVICE](#whisper_device)
+  - [WHISPER_COMPUTE_TYPE](#whisper_compute_type)
+  - [MAX_AUDIO_SIZE_BYTES](#max_audio_size_bytes)
 - [API](#api)
-- [Configuration](#configuration)
-- [Requirements](#requirements)
-- [Local Development](#local-development)
-- [Ollama Setup](#ollama-setup)
-- [Whisper Setup](#whisper-setup)
-- [Running the Application Locally](#running-the-application-locally)
-- [Docker](#docker)
-- [Docker Architecture](#docker-architecture)
-- [Docker Model Persistence](#docker-model-persistence)
+  - [Health Check](#health-check)
+  - [Process Text](#process-text)
+  - [Process Audio](#process-audio)
+- [Validation](#validation)
+- [Error Handling](#error-handling)
 - [Testing](#testing)
-- [Validation and Error Handling](#validation-and-error-handling)
-- [Supported Audio Formats](#supported-audio-formats)
-- [Security and Privacy](#security-and-privacy)
+  - [Backend Tests](#backend-tests)
+  - [Frontend Tests](#frontend-tests)
+- [Frontend Quality Checks](#frontend-quality-checks)
+- [Continuous Integration](#continuous-integration)
+  - [Backend CI](#backend-ci)
+  - [Frontend CI](#frontend-ci)
+- [Docker Architecture](#docker-architecture)
+- [Docker Services](#docker-services)
+  - [Ollama](#ollama)
+  - [Backend](#backend-1)
+  - [Frontend](#frontend-1)
+- [Production Frontend Build](#production-frontend-build)
+- [Privacy](#privacy)
 - [Troubleshooting](#troubleshooting)
+  - [Ollama is not running](#ollama-is-not-running)
+  - [Ollama model is missing](#ollama-model-is-missing)
+  - [Backend container is unhealthy](#backend-container-is-unhealthy)
+  - [Frontend cannot reach backend](#frontend-cannot-reach-backend)
+  - [Rebuild containers after source changes](#rebuild-containers-after-source-changes)
+- [Useful Commands](#useful-commands)
+- [Current Project Status](#current-project-status)
 - [Future Improvements](#future-improvements)
+- [Development Workflow](#development-workflow)
+- [Summary](#summary)
 
----
+## Features
 
-# Overview
-
-Local AI Voice Transcript App allows a user to provide content in three different ways:
-
-1. Record audio directly in the browser
-2. Upload an existing audio file
-3. Paste transcript text manually
-
-Audio is transcribed locally using Whisper.
-
-The resulting text can optionally be sent to a locally running Ollama model for cleanup, rewriting, formatting, or summarization.
-
-The application returns both:
-
-- the original transcript
-- the cleaned transcript
-
-This makes it possible to compare the raw transcription with the AI-processed result.
-
----
-
-# Features
-
-## Audio Recording
+### Voice recording
 
 Record audio directly from the browser using the microphone.
 
-The recorded audio can then be sent to the backend for transcription.
+The application uses the browser `MediaRecorder` API and converts recorded audio into a file that can be sent through the same backend processing pipeline as uploaded audio.
+
+You can also hold the `V` key to start recording and release it to stop recording.
 
 ---
 
-## Audio Upload
+### Audio upload
 
-Upload an existing audio file and process it through Whisper.
+Upload supported audio files through the interface.
 
-Supported formats currently include:
+The upload area supports:
 
-- MP3
-- WAV
-- M4A
-- WebM
-- OGG
-- MP4
+- file selection
+- drag and drop
+- file validation
+- audio preview
+- replacing uploaded audio
+- removing uploaded audio
 
----
-
-## Pasted Text Processing
-
-Instead of using audio, users can paste existing transcript text directly into the application.
-
-The text is sent to:
+Supported formats:
 
 ```text
-POST /text/process
-````
-
-and optionally cleaned using Ollama.
-
----
-
-## Local Whisper Transcription
-
-Audio is transcribed with:
-
-```text
-faster-whisper
+.mp3
+.wav
+.m4a
+.webm
+.ogg
+.mp4
 ```
 
-The current default model is:
+Maximum upload size:
 
 ```text
-base
-```
-
-The model is configurable through environment variables.
-
----
-
-## Local Ollama Processing
-
-Transcript cleanup is performed by a local Ollama model.
-
-The current default model is:
-
-```text
-llama3.2
-```
-
-The application does not require an external cloud LLM API for transcript cleaning.
-
----
-
-## Optional LLM Cleaning
-
-Users can disable LLM cleanup.
-
-When:
-
-```text
-clean_with_llm = false
-```
-
-the backend skips Ollama completely.
-
-For pasted text:
-
-```text
-original_text = input text
-cleaned_text = input text
-```
-
-For audio:
-
-```text
-audio
- ↓
-Whisper
- ↓
-original_text
- ↓
-cleaned_text = original_text
+25 MB
 ```
 
 ---
 
-## Multiple Prompt Modes
+### Paste existing transcripts
 
-The frontend currently supports three processing modes:
-
-* Default
-* Formal
-* Short
-
-Each mode maps to a different backend system prompt.
+Instead of using audio, you can paste text directly into the application and send it to the backend for optional AI cleanup.
 
 ---
 
-## Local-first Design
+### Local speech-to-text
 
-The core AI processing can run locally:
+Audio transcription is performed with:
 
 ```text
-Audio
- ↓
-Whisper
- ↓
-Transcript
- ↓
-Ollama
- ↓
-Cleaned Transcript
+Faster-Whisper
 ```
 
-This reduces dependency on external AI APIs and keeps processing under the user's control.
-
----
-
-# Architecture
-
-The high-level architecture is:
+The default configuration uses:
 
 ```text
-┌─────────────────────────────┐
-│          Browser            │
-│                             │
-│   React + TypeScript + Vite │
-└──────────────┬──────────────┘
-               │
-               │ HTTP
-               ▼
-┌─────────────────────────────┐
-│          FastAPI            │
-│                             │
-│  /text/process              │
-│  /audio/process             │
-│  /health                    │
-└──────────┬─────────┬────────┘
-           │         │
-           │         │
-           ▼         ▼
-┌───────────────┐  ┌───────────────┐
-│ faster-whisper│  │    Ollama     │
-│               │  │               │
-│ Speech → Text │  │ Text → Text   │
-└───────────────┘  └───────────────┘
+Model: base
+Device: CPU
+Compute type: int8
 ```
 
----
-
-# Application Flow
-
-## Text Processing Flow
-
-```text
-React
-  ↓
-POST /text/process
-  ↓
-FastAPI
-  ↓
-clean_with_llm?
-  │
-  ├── false
-  │     ↓
-  │   return original text
-  │
-  └── true
-        ↓
-      Ollama
-        ↓
-   cleaned_text
-        ↓
-      React
-```
+These values are configurable through environment variables.
 
 ---
 
-## Audio Processing Flow
+### Local AI text cleanup
 
-```text
-Audio File / Browser Recording
-             ↓
-           React
-             ↓
-     POST /audio/process
-             ↓
-          FastAPI
-             ↓
-       Temporary File
-             ↓
-      faster-whisper
-             ↓
-     Original Transcript
-             ↓
-      clean_with_llm?
-         │
-         ├── false
-         │     ↓
-         │ return transcript
-         │
-         └── true
-                ↓
-              Ollama
-                ↓
-        Cleaned Transcript
-                ↓
-              React
-```
-
----
-
-# Technology Stack
-
-## Frontend
-
-* React
-* TypeScript
-* Vite
-* Browser MediaRecorder API
-* Fetch API
-* CSS
-* Nginx for production Docker serving
-
----
-
-## Backend
-
-* Python
-* FastAPI
-* Pydantic
-* Uvicorn
-* HTTPX
-* python-multipart
-* python-dotenv
-
----
-
-## AI
-
-### Speech-to-text
-
-```text
-faster-whisper
-```
-
-which uses CTranslate2 for optimized Whisper inference.
-
-### Text processing
+Transcript cleanup is performed locally using:
 
 ```text
 Ollama
@@ -346,372 +161,670 @@ Default model:
 llama3.2
 ```
 
----
-
-## Infrastructure
-
-* Docker
-* Docker Compose
-* Nginx
-* Persistent Docker volumes
-
----
-
-# Project Structure
-
-The project is organized approximately as follows:
+The app supports three prompt modes:
 
 ```text
-local-ai-voice-transcript-app/
+default
+formal
+short
+```
+
+#### Default
+
+Cleans grammar, punctuation, capitalization, filler words, and false starts while preserving the original meaning.
+
+#### Formal
+
+Rewrites the transcript in a more professional and formal style while preserving the original facts and meaning.
+
+#### Short
+
+Makes the transcript more concise while preserving the important information.
+
+---
+
+### Optional AI cleanup
+
+AI cleanup can be disabled.
+
+When disabled:
+
+```text
+Audio
+  ↓
+Whisper
+  ↓
+Transcript
+```
+
+When enabled:
+
+```text
+Audio
+  ↓
+Whisper
+  ↓
+Transcript
+  ↓
+Ollama
+  ↓
+Cleaned Transcript
+```
+
+For pasted text:
+
+```text
+Text
+  ↓
+Ollama
+  ↓
+Cleaned Text
+```
+
+---
+
+### Original and cleaned transcript
+
+The interface displays both:
+
+- original transcription
+- cleaned transcription
+
+The cleaned transcript can also be copied from the UI.
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- React 19
+- TypeScript
+- Vite
+- Lucide React
+- Vitest
+- Testing Library
+- oxlint
+- Nginx for the production Docker image
+
+### Backend
+
+- Python
+- FastAPI
+- Uvicorn
+- Pydantic
+- HTTPX
+- Faster-Whisper
+- python-multipart
+
+### AI
+
+- Faster-Whisper for speech-to-text
+- Ollama for local LLM inference
+- `llama3.2` as the default LLM
+
+### Infrastructure
+
+- Docker
+- Docker Compose
+- GitHub Actions
+
+---
+
+## Architecture
+
+```text
+┌──────────────────────────────┐
+│          Browser             │
+│                              │
+│ React + TypeScript + Vite    │
+└──────────────┬───────────────┘
+               │
+               │ HTTP
+               ▼
+┌──────────────────────────────┐
+│        FastAPI Backend       │
+│                              │
+│ /text/process                │
+│ /audio/process               │
+│ /health                      │
+└───────────┬──────────┬───────┘
+            │          │
+            │          │
+            ▼          ▼
+   ┌──────────────┐  ┌──────────────┐
+   │ Faster-      │  │    Ollama    │
+   │ Whisper      │  │              │
+   │              │  │ llama3.2     │
+   │ Speech → Text│  │ Text cleanup │
+   └──────────────┘  └──────────────┘
+```
+
+---
+
+## Project Structure
+
+```text
+Voice-Notes-AI/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
 ├── backend/
-│   │
 │   ├── app/
 │   │   ├── main.py
 │   │   ├── config.py
 │   │   ├── prompts.py
 │   │   │
 │   │   ├── routers/
-│   │   │   ├── __init__.py
-│   │   │   ├── text.py
-│   │   │   └── audio.py
+│   │   │   ├── audio.py
+│   │   │   └── text.py
 │   │   │
 │   │   ├── schemas/
 │   │   │   ├── __init__.py
 │   │   │   └── transcription.py
 │   │   │
 │   │   ├── services/
-│   │   │   ├── __init__.py
 │   │   │   ├── ollama_service.py
 │   │   │   └── transcription_service.py
 │   │   │
 │   │   └── utils/
-│   │       ├── __init__.py
 │   │       └── ollama_errors.py
 │   │
 │   ├── tests/
-│   │   ├── __init__.py
+│   │   ├── test_audio.py
 │   │   ├── test_health.py
-│   │   ├── test_text.py
-│   │   └── test_audio.py
+│   │   └── test_text.py
 │   │
-│   ├── requirements.txt
 │   ├── Dockerfile
-│   ├── .env
-│   └── .env.example
+│   └── requirements.txt
 │
 ├── frontend/
-│   │
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── CleanedTranscriptCard.tsx
+│   │   │   ├── OriginalTranscriptCard.tsx
+│   │   │   ├── ProcessSection.tsx
 │   │   │   ├── RecordingWave.tsx
 │   │   │   ├── RecordVoiceCard.tsx
-│   │   │   ├── UploadAudioCard.tsx
-│   │   │   ├── TranscriptInputCard.tsx
 │   │   │   ├── SettingsCard.tsx
-│   │   │   ├── ProcessSection.tsx
-│   │   │   ├── OriginalTranscriptCard.tsx
-│   │   │   └── CleanedTranscriptCard.tsx
+│   │   │   ├── TranscriptInputCard.tsx
+│   │   │   └── UploadAudioCard.tsx
 │   │   │
 │   │   ├── services/
+│   │   │   ├── api.ts
+│   │   │   └── api.test.ts
+│   │   │
+│   │   ├── types/
 │   │   │   └── api.ts
 │   │   │
 │   │   ├── App.tsx
-│   │   ├── types.ts
-│   │   └── ...
+│   │   ├── App.css
+│   │   └── index.css
 │   │
 │   ├── Dockerfile
 │   ├── .dockerignore
-│   ├── .env
-│   └── .env.example
+│   ├── package.json
+│   └── package-lock.json
 │
 ├── docker-compose.yml
 ├── .gitignore
+├── .env.example
 └── README.md
 ```
 
 ---
 
-# Frontend
+# Getting Started
 
-The frontend handles:
+There are two ways to run the application:
 
-* microphone recording
-* drag-and-drop audio upload
-* pasted transcript input
-* selection of processing mode
-* enabling/disabling LLM cleaning
-* loading states
-* backend error display
-* original transcript rendering
-* cleaned transcript rendering
+1. Docker Compose
+2. Local development
+
+Docker Compose is the easiest way to run the complete stack.
 
 ---
 
-## Input Sources
+# Option 1 — Docker Compose
 
-The application supports three mutually exclusive input sources:
+## Requirements
 
-```typescript
-type InputSource =
-  | "record"
-  | "upload"
-  | "text"
-  | null;
-```
+Install:
 
-This prevents multiple input modes from being active simultaneously.
+- Docker
+- Docker Compose
 
-For example:
+Verify:
 
-```text
-Recording selected
-→ upload disabled
-→ text input disabled
-```
-
-and:
-
-```text
-Text entered
-→ recording disabled
-→ upload disabled
+```bash
+docker --version
+docker compose version
 ```
 
 ---
 
-# Backend
+## Clone the repository
 
-FastAPI provides the API layer between the frontend and the local AI services.
-
-The backend is divided into:
-
-```text
-routers/
-services/
-schemas/
-utils/
-config.py
+```bash
+git clone git@github.com:saleh-mmr/Voice-Notes-AI.git
+cd Voice-Notes-AI
 ```
-
-This avoids putting the entire application inside `main.py`.
 
 ---
 
-## main.py
+## Build the containers
 
-`main.py` is responsible primarily for:
-
-* creating the FastAPI application
-* CORS configuration
-* registering routers
-* exposing the health endpoint
-
-Application-specific processing logic is kept outside this file.
+```bash
+docker compose build
+```
 
 ---
 
-## Routers
+## Start the application
 
-### text.py
-
-Handles:
-
-```text
-POST /text/process
+```bash
+docker compose up
 ```
 
-Responsibilities include:
+Or run it in the background:
 
-* request validation
-* determining whether LLM processing is enabled
-* selecting the appropriate prompt
-* calling the Ollama service
-* returning a `ProcessResponse`
+```bash
+docker compose up -d
+```
+
+Docker starts three services:
+
+```text
+transcript-frontend
+transcript-backend
+transcript-ollama
+```
 
 ---
 
-### audio.py
+## Install the Ollama model
 
-Handles:
+The first time the application runs, make sure the configured model exists inside the Ollama container.
 
-```text
-POST /audio/process
+Check installed models:
+
+```bash
+docker exec -it transcript-ollama ollama list
 ```
 
-Responsibilities include:
+If `llama3.2` is not installed:
 
-* validating file extension
-* validating file size
-* validating empty uploads
-* creating a temporary audio file
-* running Whisper
-* checking transcription output
-* optionally running Ollama
-* cleaning temporary files
-* returning the result
+```bash
+docker exec -it transcript-ollama ollama pull llama3.2
+```
+
+Verify again:
+
+```bash
+docker exec -it transcript-ollama ollama list
+```
 
 ---
 
-# Whisper Transcription
+## Open the application
 
-The application uses:
+Frontend:
 
 ```text
-faster-whisper
+http://localhost:5173
 ```
 
-instead of the original Whisper Python package.
-
-The transcription service is located at:
+Backend:
 
 ```text
-backend/app/services/transcription_service.py
+http://localhost:8000
 ```
 
-The model is initialized once and reused for requests.
-
-Example configuration:
+FastAPI documentation:
 
 ```text
+http://localhost:8000/docs
+```
+
+Health endpoint:
+
+```text
+http://localhost:8000/health
+```
+
+---
+
+## Check container status
+
+```bash
+docker compose ps
+```
+
+The backend should eventually report:
+
+```text
+healthy
+```
+
+---
+
+## View logs
+
+All services:
+
+```bash
+docker compose logs -f
+```
+
+Backend:
+
+```bash
+docker compose logs -f backend
+```
+
+Frontend:
+
+```bash
+docker compose logs -f frontend
+```
+
+Ollama:
+
+```bash
+docker compose logs -f ollama
+```
+
+---
+
+## Stop the application
+
+```bash
+docker compose down
+```
+
+The Ollama models are stored in a persistent Docker volume and are not removed by a normal `docker compose down`.
+
+To also delete the volume:
+
+```bash
+docker compose down -v
+```
+
+Be aware that this also removes downloaded Ollama models.
+
+---
+
+# Option 2 — Local Development
+
+## Requirements
+
+Recommended development environment:
+
+```text
+Python 3.11+
+Node.js 24 recommended
+Ollama
+```
+
+Node.js 24 is used in CI for compatibility with the current Vitest/jsdom toolchain.
+
+---
+
+# Backend Setup
+
+Move into the backend directory:
+
+```bash
+cd backend
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it.
+
+### macOS / Linux
+
+```bash
+source .venv/bin/activate
+```
+
+### Windows
+
+```bash
+.venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start FastAPI:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The backend will run at:
+
+```text
+http://127.0.0.1:8000
+```
+
+---
+
+# Ollama Setup
+
+Install Ollama on your machine.
+
+Then pull the default model:
+
+```bash
+ollama pull llama3.2
+```
+
+Check that it is available:
+
+```bash
+ollama list
+```
+
+Make sure Ollama is running before using AI cleanup.
+
+The backend expects Ollama at:
+
+```text
+http://127.0.0.1:11434/api/chat
+```
+
+during local development.
+
+---
+
+# Frontend Setup
+
+Open another terminal:
+
+```bash
+cd frontend
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start Vite:
+
+```bash
+npm run dev
+```
+
+The frontend will normally run at:
+
+```text
+http://localhost:5173
+```
+
+---
+
+# Environment Variables
+
+## Frontend
+
+Create:
+
+```text
+frontend/.env
+```
+
+Example:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+An example file can also be stored as:
+
+```text
+frontend/.env.example
+```
+
+---
+
+## Backend
+
+The backend supports the following environment variables:
+
+```env
+OLLAMA_URL=http://127.0.0.1:11434/api/chat
+OLLAMA_MODEL=llama3.2
+
 WHISPER_MODEL=base
 WHISPER_DEVICE=cpu
 WHISPER_COMPUTE_TYPE=int8
+
+MAX_AUDIO_SIZE_BYTES=26214400
+```
+
+### OLLAMA_URL
+
+Address of the Ollama chat API.
+
+Local:
+
+```text
+http://127.0.0.1:11434/api/chat
+```
+
+Docker:
+
+```text
+http://ollama:11434/api/chat
 ```
 
 ---
 
-## Why faster-whisper?
-
-faster-whisper uses CTranslate2 and is designed for efficient Whisper inference.
-
-It works well for local transcription workloads and can run on CPU.
-
----
-
-## Current Whisper Configuration
+### OLLAMA_MODEL
 
 Default:
 
 ```text
-Model: base
-Device: CPU
-Compute type: int8
+llama3.2
 ```
 
-These values can be changed through environment variables.
+You can use another Ollama model by changing this value and downloading the corresponding model.
 
 ---
 
-# Ollama Text Processing
+### WHISPER_MODEL
 
-Ollama is responsible for cleaning or rewriting transcript text.
-
-The service is located at:
+Default:
 
 ```text
-backend/app/services/ollama_service.py
+base
 ```
 
-The backend sends an Ollama Chat API request containing:
+Other Faster-Whisper models can be used if desired.
 
-```json
-{
-  "model": "llama3.2",
-  "stream": false,
-  "messages": [
-    {
-      "role": "system",
-      "content": "..."
-    },
-    {
-      "role": "user",
-      "content": "..."
-    }
-  ]
-}
-```
-
-The resulting model response becomes:
+For example:
 
 ```text
-cleaned_text
+tiny
+small
+medium
+large-v3
 ```
+
+Larger models generally require more memory and processing time.
 
 ---
 
-# Prompt Modes
+### WHISPER_DEVICE
 
-Prompt definitions are stored in:
+Default:
 
 ```text
-backend/app/prompts.py
+cpu
 ```
 
 ---
 
-## Default
+### WHISPER_COMPUTE_TYPE
 
-Designed to clean transcript text without changing its meaning.
+Default:
 
-Example:
-
-```python
-"default": (
-    "Clean the transcript without changing its meaning. "
-    "Remove filler words such as 'um', 'uh', and repeated false starts. "
-    "Fix grammar, punctuation, and capitalization. "
-    "Preserve every factual claim from the original transcript. "
-    "Do not infer, summarize, embellish, or add any information that was not explicitly stated. "
-    "Return only the cleaned transcript. "
-    "Do not include introductions, explanations, labels, quotes, or commentary."
-)
+```text
+int8
 ```
 
----
-
-## Formal
-
-Rewrites transcript text in a more formal and professional style.
-
-Important requirements:
-
-* preserve meaning
-* preserve factual claims
-* remove filler
-* improve grammar
-* do not invent information
-* return only processed transcript text
+This is suitable for CPU inference.
 
 ---
 
-## Short
+### MAX_AUDIO_SIZE_BYTES
 
-Creates a concise version while attempting to preserve the important factual content.
+Default:
 
-It removes:
+```text
+26214400
+```
 
-* filler
-* unnecessary repetition
-* unnecessary wording
+which is:
 
-It should not add information that was not present in the original transcript.
+```text
+25 MB
+```
 
 ---
 
 # API
 
-The backend exposes the following main endpoints.
+FastAPI automatically provides interactive documentation at:
+
+```text
+http://localhost:8000/docs
+```
 
 ---
 
-## Health
+## Health Check
+
+### Request
 
 ```http
 GET /health
 ```
 
-Response:
+### Response
 
 ```json
 {
@@ -719,52 +832,64 @@ Response:
 }
 ```
 
-Used by:
-
-* developers
-* Docker health checks
-* deployment monitoring
-
 ---
 
 # Process Text
+
+### Endpoint
 
 ```http
 POST /text/process
 ```
 
-Content type:
-
-```text
-application/json
-```
-
-Example request:
+### Request
 
 ```json
 {
-  "text": "um i think maybe we should start tomorrow",
+  "text": "um hello this is my transcript",
   "clean_with_llm": true,
   "system_prompt": "default"
 }
 ```
 
-Example response:
+Available prompt values:
+
+```text
+default
+formal
+short
+```
+
+### Example response
 
 ```json
 {
   "source": "text",
-  "original_text": "um i think maybe we should start tomorrow",
-  "cleaned_text": "I think we should start tomorrow.",
+  "original_text": "um hello this is my transcript",
+  "cleaned_text": "Hello, this is my transcript.",
   "clean_with_llm": true,
   "system_prompt": "default",
   "audio": null
 }
 ```
 
+If AI cleanup is disabled:
+
+```json
+{
+  "text": "hello world",
+  "clean_with_llm": false,
+  "system_prompt": "default"
+}
+```
+
+the original text is returned as the cleaned text without contacting Ollama.
+
 ---
 
 # Process Audio
+
+### Endpoint
 
 ```http
 POST /audio/process
@@ -784,809 +909,82 @@ clean_with_llm
 system_prompt
 ```
 
-Example result:
+Example:
+
+```text
+file: recording.wav
+clean_with_llm: true
+system_prompt: default
+```
+
+### Example response
 
 ```json
 {
   "source": "audio",
-  "original_text": "This is the transcription produced by Whisper.",
-  "cleaned_text": "This is the transcription produced by Whisper.",
-  "clean_with_llm": false,
+  "original_text": "Um this is a transcript.",
+  "cleaned_text": "This is a transcript.",
+  "clean_with_llm": true,
   "system_prompt": "default",
   "audio": {
-    "filename": "recording.webm",
-    "content_type": "audio/webm"
+    "filename": "recording.wav",
+    "content_type": "audio/wav"
   }
 }
 ```
 
-When LLM cleaning is enabled:
+---
+
+# Validation
+
+The backend validates incoming requests before processing them.
+
+Examples include:
+
+- unsupported audio formats
+- empty audio files
+- files larger than the configured limit
+- corrupt or unreadable audio
+- audio containing no detectable speech
+- empty text input
+- invalid prompt modes
+
+Temporary audio files are deleted after processing.
+
+---
+
+# Error Handling
+
+The API converts common Ollama failures into useful HTTP responses.
+
+Examples include:
 
 ```text
-Audio
- ↓
-Whisper
- ↓
-original_text
- ↓
-Ollama
- ↓
-cleaned_text
+503 - Ollama unavailable
+503 - Ollama model not installed
+504 - Ollama request timed out
+502 - Invalid Ollama response
 ```
 
----
-
-# Shared Response Contract
-
-Both text and audio processing use the same response structure.
-
-Conceptually:
-
-```typescript
-type ProcessResponse = {
-  source: "text" | "audio";
-  original_text: string;
-  cleaned_text: string;
-  clean_with_llm: boolean;
-  system_prompt: string;
-  audio: AudioMetadata | null;
-};
-```
-
-This simplifies frontend handling.
-
-Both paths can use:
-
-```typescript
-setTranscriptText(result.original_text);
-setCleanedTranscript(result.cleaned_text);
-```
-
----
-
-# Configuration
-
-Configuration is controlled through environment variables.
-
----
-
-## Frontend
-
-File:
+Audio transcription problems generally return:
 
 ```text
-frontend/.env
+422
 ```
 
-Example:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
----
-
-## Backend
-
-File:
-
-```text
-backend/.env
-```
-
-Example:
-
-```env
-OLLAMA_URL=http://127.0.0.1:11434/api/chat
-OLLAMA_MODEL=llama3.2
-
-WHISPER_MODEL=base
-WHISPER_DEVICE=cpu
-WHISPER_COMPUTE_TYPE=int8
-
-MAX_AUDIO_SIZE_BYTES=26214400
-```
-
----
-
-## VITE_API_BASE_URL
-
-Defines where the React frontend sends API requests.
-
-Local development:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
----
-
-## OLLAMA_URL
-
-Defines the Ollama Chat API endpoint.
-
-Local:
-
-```env
-OLLAMA_URL=http://127.0.0.1:11434/api/chat
-```
-
-Docker:
-
-```env
-OLLAMA_URL=http://ollama:11434/api/chat
-```
-
----
-
-## OLLAMA_MODEL
-
-Defines the local LLM.
-
-Example:
-
-```env
-OLLAMA_MODEL=llama3.2
-```
-
----
-
-## WHISPER_MODEL
-
-Defines the faster-whisper model.
-
-Example:
-
-```env
-WHISPER_MODEL=base
-```
-
-Other Whisper models may also be used depending on hardware and accuracy requirements.
-
----
-
-## WHISPER_DEVICE
-
-Default:
-
-```env
-WHISPER_DEVICE=cpu
-```
-
----
-
-## WHISPER_COMPUTE_TYPE
-
-Default:
-
-```env
-WHISPER_COMPUTE_TYPE=int8
-```
-
-This is appropriate for CPU-oriented local inference.
-
----
-
-## MAX_AUDIO_SIZE_BYTES
-
-Current default:
-
-```env
-MAX_AUDIO_SIZE_BYTES=26214400
-```
-
-which corresponds to:
-
-```text
-25 MB
-```
-
----
-
-# .env.example
-
-Real `.env` files should normally not be committed to Git.
-
-Instead, the repository includes example configuration files.
-
----
-
-## backend/.env.example
-
-```env
-OLLAMA_URL=http://127.0.0.1:11434/api/chat
-OLLAMA_MODEL=llama3.2
-
-WHISPER_MODEL=base
-WHISPER_DEVICE=cpu
-WHISPER_COMPUTE_TYPE=int8
-
-MAX_AUDIO_SIZE_BYTES=26214400
-```
-
----
-
-## frontend/.env.example
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-Create local copies with:
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
-
----
-
-# Requirements
-
-For normal local development:
-
-* Git
-* Python 3.11+
-* Node.js 20+
-* npm
-* Ollama
-
-For Docker deployment:
-
-* Docker Desktop or Docker Engine
-* Docker Compose
-
----
-
-# Local Development
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-```
-
-Enter the directory:
-
-```bash
-cd local-ai-voice-transcript-app
-```
-
----
-
-# Backend Installation
-
-Enter the backend directory:
-
-```bash
-cd backend
-```
-
-Create a virtual environment:
-
-```bash
-python3 -m venv .venv
-```
-
-Activate it on macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-Create the environment file:
-
-```bash
-cp .env.example .env
-```
-
-Start FastAPI:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Backend:
-
-```text
-http://127.0.0.1:8000
-```
-
-Swagger documentation:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Health endpoint:
-
-```text
-http://127.0.0.1:8000/health
-```
-
----
-
-# Frontend Installation
-
-Open another terminal:
-
-```bash
-cd frontend
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Create the local environment file:
-
-```bash
-cp .env.example .env
-```
-
-Start Vite:
-
-```bash
-npm run dev
-```
-
-Frontend:
-
-```text
-http://localhost:5173
-```
-
----
-
-# Ollama Setup
-
-Install Ollama for your operating system.
-
-Verify:
-
-```bash
-ollama --version
-```
-
----
-
-## Download the model
-
-The default model is:
-
-```text
-llama3.2
-```
-
-Pull it with:
-
-```bash
-ollama pull llama3.2
-```
-
-Verify:
-
-```bash
-ollama list
-```
-
-Example:
-
-```text
-NAME                SIZE
-llama3.2:latest     2.0 GB
-```
-
----
-
-## Verify the Ollama API
-
-Run:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-
-You should receive JSON containing installed models.
-
----
-
-## Starting Ollama
-
-Depending on the operating system and installation, Ollama may already be running in the background.
-
-If required:
-
-```bash
-ollama serve
-```
-
-If you see:
-
-```text
-bind: address already in use
-```
-
-that usually means Ollama is already running on port:
-
-```text
-11434
-```
-
----
-
-# Whisper Setup
-
-Whisper is installed through the Python dependencies:
-
-```text
-faster-whisper
-```
-
-The current model is configured as:
-
-```env
-WHISPER_MODEL=base
-```
-
-The first time faster-whisper initializes a model, the required model files may need to be downloaded.
-
----
-
-# Running the Application Locally
-
-You typically need three processes.
-
----
-
-## Terminal 1 — Ollama
-
-Make sure Ollama is running.
-
-Verify:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-
----
-
-## Terminal 2 — Backend
-
-```bash
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --reload
-```
-
----
-
-## Terminal 3 — Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Then open:
-
-```text
-http://localhost:5173
-```
-
----
-
-# Docker
-
-The project includes Docker support for:
-
-* frontend
-* backend
-* Ollama
-
-Docker Compose manages all services together.
-
----
-
-# Backend Dockerfile
-
-The backend uses a Python slim image.
-
-Conceptually:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app ./app
-
-EXPOSE 8000
-
-CMD [
-  "uvicorn",
-  "app.main:app",
-  "--host",
-  "0.0.0.0",
-  "--port",
-  "8000"
-]
-```
-
----
-
-# Frontend Dockerfile
-
-The frontend uses a multi-stage build.
-
-Stage 1:
-
-```text
-Node
- ↓
-npm install
- ↓
-Vite production build
-```
-
-Stage 2:
-
-```text
-Nginx
- ↓
-serve /dist
-```
-
-The API URL is provided as a Vite build argument.
-
----
-
-# Docker Architecture
-
-The Docker deployment looks like:
-
-```text
-Browser
-   │
-   │ :5173
-   ▼
-┌───────────────────┐
-│ Frontend Container│
-│      Nginx        │
-└─────────┬─────────┘
-          │
-          │ :8000
-          ▼
-┌───────────────────┐
-│ Backend Container │
-│      FastAPI      │
-│                   │
-│  faster-whisper   │
-└─────────┬─────────┘
-          │
-          │ Docker network
-          ▼
-┌───────────────────┐
-│ Ollama Container  │
-│    llama3.2       │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Persistent Volume │
-│   Ollama Models   │
-└───────────────────┘
-```
-
----
-
-# Docker Compose
-
-The Compose configuration contains approximately:
-
-```yaml
-services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: transcript-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ./backend
-    container_name: transcript-backend
-    ports:
-      - "8000:8000"
-    environment:
-      OLLAMA_URL: http://ollama:11434/api/chat
-      OLLAMA_MODEL: llama3.2
-      WHISPER_MODEL: base
-      WHISPER_DEVICE: cpu
-      WHISPER_COMPUTE_TYPE: int8
-      MAX_AUDIO_SIZE_BYTES: 26214400
-    depends_on:
-      - ollama
-
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE_URL: http://localhost:8000
-    container_name: transcript-frontend
-    ports:
-      - "5173:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-
-volumes:
-  ollama_data:
-```
-
----
-
-# Starting with Docker
-
-From the project root:
-
-```bash
-docker compose up --build -d
-```
-
-Check running containers:
-
-```bash
-docker compose ps
-```
-
-View logs:
-
-```bash
-docker compose logs -f
-```
-
----
-
-# Download Ollama Model in Docker
-
-The Ollama container does not automatically contain `llama3.2`.
-
-The first time, run:
-
-```bash
-docker compose exec ollama ollama pull llama3.2
-```
-
-Verify:
-
-```bash
-docker compose exec ollama ollama list
-```
-
-After the model is downloaded once, the Docker volume preserves it.
-
----
-
-# Docker Model Persistence
-
-Compose defines:
-
-```yaml
-volumes:
-  ollama_data:
-```
-
-and mounts:
-
-```yaml
-ollama_data:/root/.ollama
-```
-
-Therefore the model survives normal container recreation.
-
-For example:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-does not require downloading `llama3.2` again.
-
-Be aware that explicitly deleting the volume removes the model data.
-
----
-
-# Rebuilding Docker After Code Changes
-
-With the current production-style Docker setup, application source is copied into the Docker image.
-
-Therefore changes to backend Python files require rebuilding:
-
-```bash
-docker compose up --build -d
-```
-
-The same applies to frontend source code.
-
-For faster development, the project could later add development-specific Docker volumes and Uvicorn reload mode.
-
----
-
-# Docker Health Check
-
-The backend provides:
-
-```text
-GET /health
-```
-
-Docker Compose can verify it with a health check.
-
-Example:
-
-```yaml
-healthcheck:
-  test:
-    [
-      "CMD",
-      "python",
-      "-c",
-      "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
-    ]
-  interval: 10s
-  timeout: 5s
-  retries: 5
-  start_period: 20s
-```
-
-The frontend can then wait for the backend health status before starting.
+Validation failures return the appropriate `400`, `413`, or `422` response.
 
 ---
 
 # Testing
 
-Backend tests use:
+The project contains automated backend and frontend tests.
 
-```text
-pytest
-```
-
-and FastAPI's:
-
-```text
-TestClient
-```
+AI services are mocked during normal automated tests, so the test suite does not require Ollama to be running or Whisper models to be downloaded.
 
 ---
 
-## Install test dependencies
-
-Make sure the active virtual environment contains the dependencies:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
----
-
-## Run backend tests
+## Backend Tests
 
 From:
 
@@ -1597,588 +995,519 @@ backend/
 run:
 
 ```bash
-python -m pytest
+pytest -v
 ```
 
-Using:
+The current backend suite contains 17 tests.
+
+It covers:
+
+- health endpoint
+- text processing without Ollama
+- text processing with mocked Ollama
+- empty and whitespace text validation
+- Ollama unavailable errors
+- missing Ollama model errors
+- Ollama timeout errors
+- invalid Ollama responses
+- audio processing without AI cleanup
+- audio processing with mocked Whisper and Ollama
+- unsupported audio formats
+- empty audio
+- oversized audio
+- transcription failures
+- no speech detection
+- Ollama failures during audio processing
+
+---
+
+## Frontend Tests
+
+From:
+
+```text
+frontend/
+```
+
+run:
 
 ```bash
-python -m pytest
+npm run test:run
 ```
 
-instead of simply:
+The current frontend API service suite contains 4 tests covering:
+
+- text processing success
+- text API errors
+- audio processing success
+- audio API errors
+
+For watch mode:
 
 ```bash
-pytest
-```
-
-helps ensure pytest uses the Python interpreter from the currently active virtual environment.
-
----
-
-## Health Test
-
-Example:
-
-```python
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-
-client = TestClient(app)
-
-
-def test_health_check():
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+npm test
 ```
 
 ---
 
-## Planned API Tests
+# Frontend Quality Checks
 
-Tests should cover:
+Run lint:
 
-### Text
-
-* valid text without LLM
-* valid text with mocked Ollama
-* blank input
-* whitespace-only input
-* Ollama unavailable
-* Ollama timeout
-* Ollama model missing
-
-### Audio
-
-* valid audio
-* empty audio
-* unsupported extension
-* file over size limit
-* corrupt audio
-* no speech detected
-* Whisper failure
-* Ollama failure after transcription
-
-AI services should normally be mocked in API unit tests so tests do not require downloading or running real models.
-
----
-
-# Validation and Error Handling
-
-The API performs validation before expensive AI processing.
-
----
-
-## Empty Text
-
-Empty text is rejected.
-
-For whitespace-only input:
-
-```text
-"   "
+```bash
+npm run lint
 ```
 
-the API returns an error instead of sending it to Ollama.
+Build the production frontend:
 
----
-
-## Empty Audio
-
-Zero-byte uploads are rejected.
-
----
-
-## Maximum Audio Size
-
-Default:
-
-```text
-25 MB
+```bash
+npm run build
 ```
 
-Oversized files return:
+Run all frontend tests:
 
-```text
-HTTP 413
+```bash
+npm run test:run
 ```
 
 ---
 
-## Unsupported Format
+# Continuous Integration
 
-Unsupported extensions return:
+The repository uses GitHub Actions for continuous integration.
+
+Workflow:
 
 ```text
-HTTP 400
+.github/workflows/ci.yml
+```
+
+The workflow runs automatically on:
+
+```text
+pushes to main
+pull requests
 ```
 
 ---
 
-## Corrupt Audio
+## Backend CI
 
-If Whisper cannot decode or transcribe an audio file:
+The backend job:
 
-```text
-HTTP 422
-```
+1. checks out the repository
+2. installs Python 3.11
+3. installs backend dependencies
+4. installs pytest
+5. runs the backend test suite
 
-Example message:
+Command:
 
-```json
-{
-  "detail": "The audio file could not be transcribed. It may be corrupt or unsupported."
-}
-```
-
----
-
-## No Speech
-
-If Whisper returns no meaningful transcript:
-
-```text
-HTTP 422
-```
-
-Example:
-
-```json
-{
-  "detail": "No speech could be detected in the audio file."
-}
+```bash
+pytest -v
 ```
 
 ---
 
-## Ollama Unavailable
+## Frontend CI
 
-If FastAPI cannot connect to Ollama:
+The frontend job:
 
-```text
-HTTP 503
+1. checks out the repository
+2. installs Node.js 24
+3. installs dependencies with `npm ci`
+4. runs lint
+5. builds the production frontend
+6. runs the Vitest test suite
+
+Commands:
+
+```bash
+npm ci
+npm run lint
+npm run build
+npm run test:run
 ```
 
-Example:
+A successful CI run means both:
 
-```json
-{
-  "detail": "Ollama is not running or cannot be reached."
-}
+```text
+Backend Tests   ✅
+Frontend Checks ✅
+```
+
+have completed successfully.
+
+---
+
+# Docker Architecture
+
+Docker Compose runs:
+
+```text
+Browser
+   │
+   ▼
+Frontend container
+Nginx :80
+   │
+   │ http://localhost:8000
+   ▼
+Backend container
+FastAPI :8000
+   │
+   │ http://ollama:11434
+   ▼
+Ollama container
+:11434
+```
+
+Host ports:
+
+```text
+Frontend: 5173
+Backend:  8000
+Ollama:   11434
 ```
 
 ---
 
-## Ollama Model Missing
+# Docker Services
 
-If the configured model is unavailable:
+## Ollama
+
+Container:
 
 ```text
-HTTP 503
+transcript-ollama
+```
+
+Port:
+
+```text
+11434
+```
+
+Model data is persisted using:
+
+```text
+ollama_data
 ```
 
 ---
-
-## Ollama Timeout
-
-If the request takes too long:
-
-```text
-HTTP 504
-```
-
----
-
-## Invalid Ollama Response
-
-Unexpected Ollama responses map to:
-
-```text
-HTTP 502
-```
-
----
-
-# Supported Audio Formats
-
-Currently:
-
-```text
-.mp3
-.wav
-.m4a
-.webm
-.ogg
-.mp4
-```
-
-The backend currently validates file extensions before transcription.
-
----
-
-# Temporary Files
-
-Uploaded audio is written to a temporary file before Whisper processing.
-
-Conceptually:
-
-```text
-UploadFile
-   ↓
-read bytes
-   ↓
-validate
-   ↓
-temporary file
-   ↓
-Whisper
-   ↓
-delete temporary file
-```
-
-Temporary files are removed using a `finally` block so cleanup occurs even when processing fails.
-
----
-
-# Privacy
-
-The project is designed for local AI processing.
-
-When used with local Whisper and local Ollama:
-
-```text
-Audio
- ↓
-local backend
- ↓
-local Whisper
- ↓
-local Ollama
-```
-
-No external AI API is required for the core transcription and cleaning process.
-
-However, users should still review:
-
-* model download behavior
-* Docker networking
-* operating-system telemetry
-* deployment infrastructure
-
-before making strict privacy guarantees in production environments.
-
----
-
-# Error UX
-
-The frontend displays backend errors returned by FastAPI.
-
-Examples include:
-
-```text
-Unsupported audio format.
-```
-
-```text
-Audio file is too large.
-```
-
-```text
-No speech could be detected in the audio file.
-```
-
-```text
-Ollama is not running or cannot be reached.
-```
-
-This provides more useful feedback than a generic processing error.
-
----
-
-# Development Notes
-
-## Vite environment variables
-
-Vite environment variables beginning with:
-
-```text
-VITE_
-```
-
-are embedded into the frontend during the build.
-
-Therefore:
-
-```text
-VITE_API_BASE_URL
-```
-
-is a build-time value in the production Docker image.
-
-Changing it may require rebuilding the frontend image.
-
----
-
-## Local vs Docker Ollama URL
-
-Local backend:
-
-```text
-http://127.0.0.1:11434/api/chat
-```
-
-Docker backend with an Ollama Compose service:
-
-```text
-http://ollama:11434/api/chat
-```
-
-Inside Docker, `127.0.0.1` refers to the current container itself.
-
-Containers communicate with one another using Compose service names.
-
----
-
-# Common Commands
 
 ## Backend
 
-Activate environment:
+Container:
 
-```bash
-cd backend
-source .venv/bin/activate
+```text
+transcript-backend
 ```
 
-Install:
+Port:
 
-```bash
-python -m pip install -r requirements.txt
+```text
+8000
 ```
 
-Run:
+The backend includes a Docker health check against:
 
-```bash
-uvicorn app.main:app --reload
-```
-
-Test:
-
-```bash
-python -m pytest
+```text
+/health
 ```
 
 ---
 
 ## Frontend
 
-```bash
-cd frontend
-npm install
-npm run dev
+Container:
+
+```text
+transcript-frontend
 ```
 
-Production build:
+Host port:
 
-```bash
+```text
+5173
+```
+
+Container port:
+
+```text
+80
+```
+
+The React application is built with Vite and served through Nginx.
+
+---
+
+# Production Frontend Build
+
+The frontend Docker image uses a multi-stage build.
+
+First stage:
+
+```text
+Node.js
+   ↓
+npm ci
+   ↓
 npm run build
 ```
 
----
+Second stage:
 
-## Ollama
-
-List models:
-
-```bash
-ollama list
+```text
+Nginx
+   ↓
+serves /dist
 ```
 
-Pull model:
-
-```bash
-ollama pull llama3.2
-```
-
-Run interactively:
-
-```bash
-ollama run llama3.2
-```
-
-Check API:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
+This keeps the final frontend container small and does not include the Node.js build toolchain.
 
 ---
 
-## Docker
+# Privacy
 
-Build and start:
+The application is designed around local AI processing.
 
-```bash
-docker compose up --build -d
-```
+When running the standard local setup:
 
-View containers:
+- Faster-Whisper processes audio locally
+- Ollama runs the language model locally
+- transcripts do not need to be sent to an external AI API
 
-```bash
-docker compose ps
-```
-
-View logs:
-
-```bash
-docker compose logs -f
-```
-
-Stop:
-
-```bash
-docker compose down
-```
-
-Rebuild after source changes:
-
-```bash
-docker compose up --build -d
-```
-
-Pull Ollama model:
-
-```bash
-docker compose exec ollama ollama pull llama3.2
-```
-
-List Docker Ollama models:
-
-```bash
-docker compose exec ollama ollama list
-```
+Actual privacy still depends on how and where you deploy the application.
 
 ---
 
 # Troubleshooting
 
-## `docker: command not found`
+## Ollama is not running
 
-Docker is not installed or the CLI is not available.
-
-On macOS, install and start Docker Desktop.
-
-Verify:
-
-```bash
-docker --version
-docker compose version
-```
-
----
-
-## Ollama cannot be reached
-
-Check whether Ollama is running:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-
-For Docker Compose, make sure the backend uses:
+If the backend returns:
 
 ```text
-http://ollama:11434/api/chat
+Ollama is not running or cannot be reached.
 ```
 
-when Ollama itself is running as a Compose service.
-
----
-
-## `bind: address already in use`
-
-Example:
-
-```text
-listen tcp 127.0.0.1:11434: bind: address already in use
-```
-
-Usually this means Ollama is already running.
-
-Check:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-
----
-
-## Ollama model missing
-
-Check:
+check:
 
 ```bash
 ollama list
 ```
 
-or in Docker:
+or, when using Docker:
 
 ```bash
-docker compose exec ollama ollama list
+docker compose ps
 ```
 
-Install:
+Check Ollama logs:
 
 ```bash
-ollama pull llama3.2
-```
-
-or:
-
-```bash
-docker compose exec ollama ollama pull llama3.2
+docker compose logs ollama
 ```
 
 ---
 
-## `pytest` cannot find FastAPI
+## Ollama model is missing
 
 Check:
 
 ```bash
-which python
-which pip
-which pytest
+docker exec -it transcript-ollama ollama list
 ```
 
-Make sure dependencies are installed in the virtual environment:
+Install the default model:
 
 ```bash
-python -m pip install -r requirements.txt
+docker exec -it transcript-ollama ollama pull llama3.2
 ```
-
-Run tests with:
-
-```bash
-python -m pytest
-```
-
-This ensures pytest runs using the same Python interpreter as the backend.
 
 ---
 
-## Docker changes are not appearing
+## Backend container is unhealthy
 
-The current Dockerfiles copy source code into images.
-
-After changing `.py`, `.tsx`, `.ts`, CSS, or similar application files:
+Check:
 
 ```bash
-docker compose up --build -d
+docker compose logs backend
+```
+
+Test the health endpoint:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
+## Frontend cannot reach backend
+
+Make sure the backend is running:
+
+```bash
+curl http://localhost:8000/health
+```
+
+For local frontend development, verify:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+For the current Docker frontend build, the browser reaches the backend through:
+
+```text
+http://localhost:8000
+```
+
+---
+
+## Rebuild containers after source changes
+
+```bash
+docker compose down
+docker compose build
+docker compose up
+```
+
+To rebuild only the backend:
+
+```bash
+docker compose build backend
+docker compose up
+```
+
+To rebuild only the frontend:
+
+```bash
+docker compose build frontend
+docker compose up
+```
+
+---
+
+# Useful Commands
+
+## Start Docker stack
+
+```bash
+docker compose up
+```
+
+## Start in background
+
+```bash
+docker compose up -d
+```
+
+## Stop Docker stack
+
+```bash
+docker compose down
+```
+
+## Check containers
+
+```bash
+docker compose ps
+```
+
+## Backend logs
+
+```bash
+docker compose logs -f backend
+```
+
+## Frontend logs
+
+```bash
+docker compose logs -f frontend
+```
+
+## Ollama logs
+
+```bash
+docker compose logs -f ollama
+```
+
+## List Ollama models
+
+```bash
+docker exec -it transcript-ollama ollama list
+```
+
+## Pull Ollama model
+
+```bash
+docker exec -it transcript-ollama ollama pull llama3.2
+```
+
+## Backend tests
+
+```bash
+cd backend
+pytest -v
+```
+
+## Frontend lint
+
+```bash
+cd frontend
+npm run lint
+```
+
+## Frontend build
+
+```bash
+npm run build
+```
+
+## Frontend tests
+
+```bash
+npm run test:run
+```
+
+---
+
+# Current Project Status
+
+The project currently includes:
+
+```text
+Responsive React interface              ✅
+Microphone recording                    ✅
+Hold-V recording shortcut               ✅
+Drag-and-drop audio upload              ✅
+Audio preview                           ✅
+Text input                              ✅
+FastAPI backend                         ✅
+Faster-Whisper transcription            ✅
+Ollama transcript cleanup               ✅
+Multiple cleanup prompt modes           ✅
+Optional LLM processing                 ✅
+API validation and error handling       ✅
+Backend automated tests                 ✅
+Frontend API tests                      ✅
+Dockerized frontend                     ✅
+Dockerized backend                      ✅
+Dockerized Ollama                       ✅
+Persistent Ollama model storage         ✅
+Backend Docker health check             ✅
+Docker Compose orchestration            ✅
+GitHub Actions CI                       ✅
 ```
 
 ---
@@ -2187,158 +1516,68 @@ docker compose up --build -d
 
 Possible future improvements include:
 
-## Testing
-
-* full text endpoint tests
-* mocked Ollama tests
-* mocked Whisper tests
-* audio validation tests
-* frontend component tests
-* end-to-end browser tests
-
----
-
-## Frontend UX
-
-* success notifications
-* better progress indicators
-* separate transcription and cleaning progress
-* processing stages
-* retry actions
-* copy transcript button
-* download transcript button
-* reset workflow
-* transcription history
+- additional frontend component tests
+- improved microphone permission feedback
+- better copy-success feedback
+- more detailed processing status messages
+- additional Whisper model configuration options
+- GPU acceleration
+- speaker diarization
+- timestamps
+- transcript history
+- export to TXT, Markdown, or PDF
+- automatic Ollama model initialization
+- production deployment configuration
 
 ---
 
-## Audio
+# Development Workflow
 
-* duration limit
-* MIME validation in addition to file extension
-* improved recording visualization
-* audio preprocessing
-* silence detection
-* language selection
-* Whisper language detection display
-* timestamps
-* speaker diarization
+A useful workflow before pushing changes is:
 
----
+### Backend
 
-## AI
+```bash
+cd backend
+pytest -v
+```
 
-* selectable Ollama models
-* custom system prompts
-* temperature configuration
-* prompt presets
-* transcript translation
-* structured meeting-note extraction
-* summaries
-* action item extraction
-* title generation
+### Frontend
 
----
+```bash
+cd frontend
+npm run lint
+npm run build
+npm run test:run
+```
 
-## Infrastructure
+### Docker
 
-* development Docker Compose configuration
-* source volume mounting
-* automatic backend reload
-* automatic frontend hot reload
-* automatic Ollama model initialization
-* GPU-aware Docker configurations
-* production reverse proxy
-* HTTPS
-* deployment documentation
+```bash
+docker compose build
+docker compose up
+```
+
+Then push the changes and GitHub Actions will run the automated CI checks again.
 
 ---
 
-## API
+# Summary
 
-* API versioning
-* structured error response schemas
-* request IDs
-* centralized logging
-* rate limits
-* upload streaming
-* model readiness endpoints
-
----
-
-# Current Processing Summary
-
-The finished application pipeline currently looks like:
+Voice Notes AI provides a fully local workflow for converting voice recordings into readable text:
 
 ```text
-                       ┌───────────────┐
-                       │     React     │
-                       └───────┬───────┘
-                               │
-              ┌────────────────┴────────────────┐
-              │                                 │
-              ▼                                 ▼
-       Pasted Transcript                  Audio Input
-              │                                 │
-              ▼                                 ▼
-      POST /text/process               POST /audio/process
-              │                                 │
-              │                                 ▼
-              │                         faster-whisper
-              │                                 │
-              │                                 ▼
-              │                         Original Transcript
-              │                                 │
-              └───────────────┬─────────────────┘
-                              │
-                              ▼
-                       clean_with_llm?
-                         │         │
-                       false      true
-                         │         │
-                         │         ▼
-                         │       Ollama
-                         │         │
-                         └────┬────┘
-                              │
-                              ▼
-                       ProcessResponse
-                              │
-                              ▼
-                            React
-                              │
-                    ┌─────────┴─────────┐
-                    ▼                   ▼
-            Original Transcript   Cleaned Transcript
+Record / Upload / Paste
+          ↓
+      FastAPI
+          ↓
+   Faster-Whisper
+          ↓
+ Original Transcript
+          ↓
+       Ollama
+          ↓
+ Cleaned Transcript
 ```
 
----
-
-# Project Goal
-
-The main goal of this project is to demonstrate a complete local AI application that combines:
-
-```text
-browser audio recording
-+
-file upload
-+
-speech-to-text
-+
-local LLM processing
-+
-FastAPI
-+
-React
-+
-Docker
-```
-
-while maintaining a clean architecture and keeping AI processing local.
-
-It is intended both as a practical transcription application and as an example of how modern local AI tools such as Whisper and Ollama can be integrated into a conventional full-stack web application.
-
-```
-
-One small note: the README above lists `test_text.py` and `test_audio.py` in the intended test structure, but based on where we are in the implementation, only the health test has definitely been completed so far. If those two test files do not exist yet, either remove them from the tree temporarily or keep them only after we implement the next test steps.
-```
+The project combines a responsive React frontend, a FastAPI backend, local speech recognition, local language-model processing, automated tests, Docker Compose, and GitHub Actions CI into one application.

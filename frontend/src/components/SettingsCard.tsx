@@ -1,11 +1,12 @@
 import { Settings, Sparkles } from "lucide-react";
+import type { PromptType } from "../types/api";
 
 type SettingsCardProps = {
   cleanWithLLM: boolean;
-  systemPrompt: string;
+  systemPrompt: PromptType;
   isLoading: boolean;
   setCleanWithLLM: (value: boolean) => void;
-  setSystemPrompt: (value: string) => void;
+  setSystemPrompt: (value: PromptType) => void;
 };
 
 function SettingsCard({
@@ -57,7 +58,11 @@ function SettingsCard({
         <select
           id="systemPrompt"
           value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
+          onChange={(e) =>
+            setSystemPrompt(
+              e.target.value as PromptType
+            )
+          }
           disabled={isLoading || !cleanWithLLM}
         >
           <option value="default">

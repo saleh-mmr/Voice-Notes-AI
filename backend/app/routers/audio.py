@@ -83,7 +83,7 @@ async def process_audio(
 
             try:
                 cleaned_text = await generate_with_ollama(
-                    text=request.text,
+                    text=transcript,
                     system_prompt=system_prompt,
                 )
 

@@ -14,6 +14,7 @@ import OriginalTranscriptCard from "./components/OriginalTranscriptCard";
 import CleanedTranscriptCard from "./components/CleanedTranscriptCard";
 import {processAudio, processText,} from "./services/api";
 import type { InputSource } from "./types";
+import type { PromptType } from "./types/api";
 
 import "./App.css";
 
@@ -24,7 +25,7 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [transcriptText, setTranscriptText] = useState("");
   const [cleanWithLLM, setCleanWithLLM] = useState(true);
-  const [systemPrompt, setSystemPrompt] = useState("default");
+  const [systemPrompt, setSystemPrompt] = useState<PromptType>("default");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(true);

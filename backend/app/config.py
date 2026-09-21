@@ -1,5 +1,10 @@
 import os
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 OLLAMA_URL = os.getenv(
     "OLLAMA_URL",
@@ -25,3 +30,19 @@ WHISPER_COMPUTE_TYPE = os.getenv(
     "WHISPER_COMPUTE_TYPE",
     "int8",
 )
+
+MAX_AUDIO_SIZE_BYTES = int(
+    os.getenv(
+        "MAX_AUDIO_SIZE_BYTES",
+        str(25 * 1024 * 1024),
+    )
+)
+
+SUPPORTED_AUDIO_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".webm",
+    ".ogg",
+    ".mp4",
+}

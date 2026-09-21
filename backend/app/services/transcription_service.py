@@ -1,19 +1,19 @@
 from faster_whisper import WhisperModel
+from app.config import (WHISPER_COMPUTE_TYPE, WHISPER_DEVICE, WHISPER_MODEL)
 
 '''
 What this does:
-    - loads Whisper once when the backend starts
-    - uses the local base model
-    - runs on CPU
-    - returns one combined transcription string
+    - transcribes audio files using the Faster Whisper model
+    - uses the model specified in the WHISPER_MODEL environment variable
+    - uses the device specified in the WHISPER_DEVICE environment variable
+    - uses the compute type specified in the WHISPER_COMPUTE_TYPE environment variable
+    - returns the transcribed text as a single string
 '''
 
-MODEL_SIZE = "base"
-
 whisper_model = WhisperModel(
-    MODEL_SIZE,
-    device="cpu",
-    compute_type="int8",
+    WHISPER_MODEL,
+    device=WHISPER_DEVICE,
+    compute_type=WHISPER_COMPUTE_TYPE,
 )
 
 

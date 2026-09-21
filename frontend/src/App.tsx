@@ -229,8 +229,7 @@ function App() {
         }
 
         if (
-          (inputSource === "record" || inputSource === "upload") &&
-          audioFile
+          (inputSource === "record" || inputSource === "upload") && audioFile
         ) {
           const result = await processAudio(
             audioFile,

@@ -1,5 +1,21 @@
 import os
 
+MAX_AUDIO_SIZE_BYTES = int(
+    os.getenv(
+        "MAX_AUDIO_SIZE_BYTES",
+        str(25 * 1024 * 1024),
+    )
+)
+
+SUPPORTED_AUDIO_EXTENSIONS = {
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".webm",
+    ".ogg",
+    ".mp4",
+}
+
 
 OLLAMA_URL = os.getenv(
     "OLLAMA_URL",

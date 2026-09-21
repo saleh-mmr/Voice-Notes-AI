@@ -1,8 +1,7 @@
 import os
 import tempfile
-
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-
+from app.config import MAX_AUDIO_SIZE_BYTES, SUPPORTED_AUDIO_EXTENSIONS
 from app.prompts import get_system_prompt
 from app.schemas import AudioMetadata, ProcessResponse
 from app.services.transcription_service import transcribe_audio
@@ -15,23 +14,10 @@ from app.services.ollama_service import (
 )
 
 
-
 router = APIRouter(
     prefix="/audio",
     tags=["audio"],
 )
-
-
-MAX_AUDIO_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
-
-SUPPORTED_AUDIO_EXTENSIONS = {
-    ".mp3",
-    ".wav",
-    ".m4a",
-    ".webm",
-    ".ogg",
-    ".mp4",
-}
 
 
 @router.post("/process", response_model=ProcessResponse)

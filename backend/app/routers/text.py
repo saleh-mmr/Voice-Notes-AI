@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
-
-from app.ollama_errors import raise_ollama_http_exception
+from app.utils.ollama_errors import raise_ollama_http_exception
 from app.prompts import get_system_prompt
 from app.schemas import ProcessResponse, TextProcessRequest
 from app.services.ollama_service import (

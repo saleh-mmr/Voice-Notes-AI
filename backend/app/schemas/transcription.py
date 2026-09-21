@@ -7,7 +7,7 @@ This gives you:
 '''
 
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AudioMetadata(BaseModel):
@@ -16,7 +16,7 @@ class AudioMetadata(BaseModel):
 
 
 class TextProcessRequest(BaseModel):
-    text: str
+    text: str = Field(min_length=1)
     clean_with_llm: bool = True
     system_prompt: str = "default"
 

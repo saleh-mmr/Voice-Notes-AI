@@ -1,4 +1,5 @@
 fastapi             # web framework
 uvicorn[standard]   # server that runs the FastAPI app
 python-multipart    # for handling file uploads
-httpx               # for making HTTP requests   
+httpx               # for making HTTP requests
+faster-whisper      # for speech recognition

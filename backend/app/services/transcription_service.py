@@ -11,14 +11,6 @@ What this does:
     - returns the transcribed text as a single string
 '''
 
-
-from app.config import (
-    WHISPER_COMPUTE_TYPE,
-    WHISPER_DEVICE,
-    WHISPER_MODEL,
-)
-
-
 @lru_cache(maxsize=1)
 def get_whisper_model() -> WhisperModel:
     return WhisperModel(

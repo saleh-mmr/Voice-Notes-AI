@@ -1,14 +1,7 @@
-import os
-import tempfile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from app.schemas import (AudioMetadata, ProcessResponse,TextProcessRequest)
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from app.prompts import get_system_prompt
-from app.services.ollama_service import generate_with_ollama
-from app.services.transcription_service import transcribe_audio
-from app.routers.text import router as text_router
 from app.routers.audio import router as audio_router
+from app.routers.text import router as text_router
 
 '''
 when you run uvicorn app.main:app --reload, Uvicorn will look for the app object in

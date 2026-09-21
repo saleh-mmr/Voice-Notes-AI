@@ -1,13 +1,13 @@
-'''
-This module defines the Pydantic models used for request and response validation in the FastAPI application.
-This gives you:
-    one request schema for text
-    one shared response schema for both text and audio
-    one nested schema for audio metadata
-'''
-
 from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+PromptType = Literal[
+    "default",
+    "formal",
+    "short",
+]
 
 
 class AudioMetadata(BaseModel):
@@ -18,7 +18,7 @@ class AudioMetadata(BaseModel):
 class TextProcessRequest(BaseModel):
     text: str = Field(min_length=1)
     clean_with_llm: bool = True
-    system_prompt: str = "default"
+    system_prompt: PromptType = "default"
 
 
 class ProcessResponse(BaseModel):
@@ -26,5 +26,5 @@ class ProcessResponse(BaseModel):
     original_text: str
     cleaned_text: str
     clean_with_llm: bool
-    system_prompt: str
+    system_prompt: PromptType
     audio: AudioMetadata | None = None

@@ -1,4 +1,6 @@
 from fastapi import APIRouter, HTTPException
+
+from app.ollama_errors import raise_ollama_http_exception
 from app.prompts import get_system_prompt
 from app.schemas import ProcessResponse, TextProcessRequest
 from app.services.ollama_service import (
@@ -9,10 +11,6 @@ from app.services.ollama_service import (
     generate_with_ollama,
 )
 
-
-'''
-This router handles text processing requests.
-'''
 
 router = APIRouter(
     prefix="/text",
@@ -46,29 +44,13 @@ async def process_text(request: TextProcessRequest):
             system_prompt=system_prompt,
         )
 
-    except OllamaUnavailableError as error:
-        raise HTTPException(
-            status_code=503,
-            detail="Ollama is not running or cannot be reached.",
-        ) from error
-
-    except OllamaModelMissingError as error:
-        raise HTTPException(
-            status_code=503,
-            detail="The configured Ollama model is not installed.",
-        ) from error
-
-    except OllamaTimeoutError as error:
-        raise HTTPException(
-            status_code=504,
-            detail="Ollama took too long to respond.",
-        ) from error
-
-    except OllamaResponseError as error:
-        raise HTTPException(
-            status_code=502,
-            detail="Ollama returned an invalid response.",
-        ) from error
+    except (
+        OllamaUnavailableError,
+        OllamaModelMissingError,
+        OllamaTimeoutError,
+        OllamaResponseError,
+    ) as error:
+        raise_ollama_http_exception(error)
 
     return ProcessResponse(
         source="text",

@@ -1,10 +1,19 @@
 import os
 import tempfile
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from app.config import MAX_AUDIO_SIZE_BYTES, SUPPORTED_AUDIO_EXTENSIONS
+
+from app.config import (
+    MAX_AUDIO_SIZE_BYTES,
+    SUPPORTED_AUDIO_EXTENSIONS,
+)
+from app.ollama_errors import raise_ollama_http_exception
 from app.prompts import get_system_prompt
-from app.schemas import AudioMetadata, ProcessResponse
-from app.services.transcription_service import transcribe_audio
+from app.schemas import (
+    AudioMetadata,
+    ProcessResponse,
+    PromptType,
+)
 from app.services.ollama_service import (
     OllamaModelMissingError,
     OllamaResponseError,
@@ -12,6 +21,7 @@ from app.services.ollama_service import (
     OllamaUnavailableError,
     generate_with_ollama,
 )
+from app.services.transcription_service import transcribe_audio
 
 
 router = APIRouter(
@@ -24,7 +34,7 @@ router = APIRouter(
 async def process_audio(
     file: UploadFile = File(...),
     clean_with_llm: bool = Form(True),
-    system_prompt: str = Form("default"),
+    system_prompt: PromptType = Form("default"),
 ):
     filename = file.filename or "audio.webm"
     extension = os.path.splitext(filename)[1].lower()
@@ -61,6 +71,7 @@ async def process_audio(
 
         try:
             transcript = transcribe_audio(temp_file_path)
+
         except Exception as error:
             raise HTTPException(
                 status_code=422,
@@ -84,32 +95,16 @@ async def process_audio(
             try:
                 cleaned_text = await generate_with_ollama(
                     text=transcript,
-                    system_prompt=system_prompt,
+                    system_prompt=prompt,
                 )
 
-            except OllamaUnavailableError as error:
-                raise HTTPException(
-                    status_code=503,
-                    detail="Ollama is not running or cannot be reached.",
-                ) from error
-
-            except OllamaModelMissingError as error:
-                raise HTTPException(
-                    status_code=503,
-                    detail="The configured Ollama model is not installed.",
-                ) from error
-
-            except OllamaTimeoutError as error:
-                raise HTTPException(
-                    status_code=504,
-                    detail="Ollama took too long to respond.",
-                ) from error
-
-            except OllamaResponseError as error:
-                raise HTTPException(
-                    status_code=502,
-                    detail="Ollama returned an invalid response.",
-                ) from error
+            except (
+                OllamaUnavailableError,
+                OllamaModelMissingError,
+                OllamaTimeoutError,
+                OllamaResponseError,
+            ) as error:
+                raise_ollama_http_exception(error)
 
         return ProcessResponse(
             source="audio",

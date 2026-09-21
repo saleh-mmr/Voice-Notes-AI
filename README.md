@@ -77,6 +77,8 @@ The application can run locally during development or as a complete Docker Compo
 - [Development Workflow](#development-workflow)
 - [Summary](#summary)
 
+---
+
 ## Features
 
 ### Voice recording

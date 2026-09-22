@@ -9,16 +9,19 @@ The application is built with **React, TypeScript, FastAPI, Faster-Whisper, Olla
 > **Local-first:** audio transcription and LLM-based text processing can run entirely on your machine. Actual privacy depends on how and where the application is deployed.
 
 ---
-
 ## Demo
 
-<!-- Add a screenshot or GIF here.
+### Voice Transcription
 
-Example:
+Record or upload audio, transcribe it locally with Faster-Whisper, and clean the transcript with Ollama.
 
-![Voice Notes AI](docs/images/voice-notes-ai.png)
+![Voice transcription demo](docs/assets/audio-test.gif)
 
--->
+### Text Cleanup
+
+Paste an existing transcript and use a local LLM to remove filler words and improve readability.
+
+![Text cleanup demo](docs/assets/text-test.gif)
 
 **Input**
 

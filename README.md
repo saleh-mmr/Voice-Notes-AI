@@ -163,7 +163,7 @@ You need:
 Clone the repository:
 
 ```bash
-git clone git@github.com:saleh-mmr/voice-notes-ai.git
+git clone git@github.com:salehmmrezaei/voice-notes-ai.git
 cd voice-notes-ai
 ```
 
